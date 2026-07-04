@@ -1,703 +1,90 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Workout Timer</title>
-<style>
-  :root{
-    --bg: #08070c;
-    --surface: #131019;
-    --surface-2: #1c1726;
-    --purple: #9333ea;
-    --purple-bright: #c084fc;
-    --purple-dim: #5b21b6;
-    --amber: #f0b429;
-    --danger: #e0457b;
-    --rest: #55506b;
-    --text: #f3f0fa;
-    --muted: #9791ab;
-    --ring-bg: #241d33;
-  }
-  *{ box-sizing: border-box; }
-  html, body{
-    margin:0; padding:0; min-height:100%;
-    background:
-      radial-gradient(1200px 600px at 50% -10%, rgba(147,51,234,0.18), transparent 60%),
-      radial-gradient(800px 500px at 100% 100%, rgba(224,69,123,0.08), transparent 60%),
-      var(--bg);
-    color: var(--text);
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    -webkit-font-smoothing: antialiased;
-  }
-  .wrap{
-    min-height:100vh;
-    display:flex;
-    flex-direction:column;
-    align-items:center;
-    justify-content:flex-start;
-    padding: 28px 16px 40px;
-  }
-  .brand{ text-align:center; margin-bottom: 18px; }
-  .brand .mark{
-    font-size: 11px; letter-spacing: 0.35em; text-transform: uppercase;
-    color: var(--purple-bright); font-weight: 700;
-  }
-  .brand h1{
-    margin: 4px 0 0; font-size: 26px; letter-spacing: 0.02em; font-weight: 800;
-    background: linear-gradient(120deg, #fff, var(--purple-bright) 70%);
-    -webkit-background-clip: text; background-clip: text; color: transparent;
-  }
-
-  .card{
-    position: relative;
-    width: 100%;
-    max-width: 440px;
-    background: linear-gradient(180deg, var(--surface), var(--surface-2));
-    border: 1px solid rgba(192,132,252,0.15);
-    border-radius: 28px;
-    padding: 26px 22px 22px;
-    box-shadow: 0 30px 60px -20px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.02) inset;
-  }
-
-  /* ---------- Tela de Configurações ---------- */
-  #configView h2{ margin: 0 0 4px; font-size: 18px; font-weight: 800; }
-  #configView .sub{ margin: 0 0 20px; font-size: 12.5px; color: var(--muted); }
-  .field-group{ margin-bottom: 16px; }
-  .field-group label{
-    display:block; font-size: 12px; font-weight: 700; letter-spacing: 0.03em;
-    text-transform: uppercase; color: var(--purple-bright); margin-bottom: 8px;
-  }
-  .time-inputs{ display:flex; align-items:center; gap: 6px; }
-  .time-inputs input{ width: 64px; text-align:center; }
-  .time-inputs span{ color: var(--muted); font-size: 13px; }
-  .row-inline{ display:flex; gap: 14px; }
-  .row-inline > .field-group{ flex:1; }
-  input[type="number"]{
-    font-family: "SF Mono", SFMono-Regular, ui-monospace, Menlo, Consolas, monospace;
-    background: var(--surface-2);
-    border: 1px solid rgba(192,132,252,0.2);
-    border-radius: 10px;
-    color: var(--text);
-    font-size: 15px;
-    font-weight: 700;
-    padding: 10px 8px;
-    -moz-appearance: textfield;
-  }
-  input[type="number"]::-webkit-outer-spin-button,
-  input[type="number"]::-webkit-inner-spin-button{ -webkit-appearance: none; margin:0; }
-  input[type="number"]:focus{
-    outline: none; border-color: var(--purple-bright);
-    box-shadow: 0 0 0 3px rgba(192,132,252,0.2);
-  }
-  .field-hint{ font-size: 11px; color: #6f6a86; margin-top: 6px; }
-
-  .total-box{
-    margin-top: 22px;
-    padding: 16px 18px;
-    border-radius: 16px;
-    background: rgba(147,51,234,0.12);
-    border: 1px solid rgba(192,132,252,0.3);
-    display:flex;
-    align-items:center;
-    justify-content:space-between;
-  }
-  .total-box .lbl{
-    font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em;
-    color: var(--muted); font-weight: 700;
-  }
-  .total-box .val{
-    font-family: "SF Mono", SFMono-Regular, ui-monospace, Menlo, Consolas, monospace;
-    font-size: 24px; font-weight: 800; color: var(--purple-bright);
-  }
-
-  .breakdown{ margin-top: 14px; font-size: 11.5px; color: var(--muted); line-height: 1.6; }
-  .breakdown b{ color: var(--text); }
-
-  .btn-full{ width: 100%; margin-top: 22px; }
-
-  /* ---------- Botões (geral) ---------- */
-  button{
-    font-family: inherit;
-    border: none;
-    cursor: pointer;
-    border-radius: 14px;
-    padding: 14px 10px;
-    font-size: 14px;
-    font-weight: 700;
-    letter-spacing: 0.02em;
-    transition: transform 0.15s ease, filter 0.15s ease, background 0.2s ease;
-    color: var(--text);
-    background: var(--surface-2);
-    border: 1px solid rgba(192,132,252,0.18);
-  }
-  button:active{ transform: scale(0.96); }
-  button:hover{ filter: brightness(1.15); }
-  .btn-primary{
-    background: linear-gradient(120deg, var(--purple), #7c3aed);
-    box-shadow: 0 8px 24px -8px rgba(147,51,234,0.6);
-  }
-  .btn-danger{ color: var(--danger); border-color: rgba(224,69,123,0.3); }
-
-  /* ---------- Tela do Timer ---------- */
-  #timerView{ display:none; }
-
-  .top-actions{ display:flex; justify-content: flex-end; margin-bottom: 4px; }
-  .link-btn{
-    background: none; border: none; color: var(--muted);
-    font-size: 12px; font-weight: 700; text-decoration: underline;
-    text-underline-offset: 3px; padding: 4px 2px; box-shadow: none;
-  }
-  .link-btn:hover{ color: var(--purple-bright); filter:none; }
-
-  .phase-row{ display:flex; align-items:center; justify-content: space-between; margin-bottom: 14px; }
-  .phase-label{
-    display:inline-flex; align-items:center; gap:8px;
-    font-size: 13px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
-    padding: 6px 12px; border-radius: 999px;
-    background: rgba(147,51,234,0.15); color: var(--purple-bright);
-    border: 1px solid rgba(192,132,252,0.25);
-    transition: all 0.35s ease;
-  }
-  .phase-label.rest{ background: rgba(85,80,107,0.25); color:#c8c3da; border-color: rgba(200,195,218,0.2); }
-  .phase-label.troca{ background: rgba(240,180,41,0.15); color: var(--amber); border-color: rgba(240,180,41,0.4); }
-  .phase-label.end{ background: rgba(224,69,123,0.15); color: var(--danger); border-color: rgba(224,69,123,0.4); }
-
-  .round-count{ font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; font-weight: 600; }
-
-  .ring-holder{ position: relative; width: 260px; height: 260px; margin: 6px auto 18px; }
-  svg{ width:100%; height:100%; transform: rotate(-90deg); }
-  .ring-bg{ fill:none; stroke: var(--ring-bg); stroke-width: 12; }
-  .ring-progress{
-    fill:none; stroke: var(--purple);
-    stroke-width: 12; stroke-linecap: round;
-    transition: stroke-dashoffset 0.25s linear, stroke 0.4s ease;
-    filter: drop-shadow(0 0 10px rgba(192,132,252,0.55));
-  }
-  .ring-progress.rest{ stroke: var(--rest); filter: drop-shadow(0 0 6px rgba(150,145,175,0.3)); }
-  .ring-progress.troca{ stroke: var(--amber); filter: drop-shadow(0 0 14px rgba(240,180,41,0.6)); }
-  .ring-progress.end{ stroke: var(--danger); filter: drop-shadow(0 0 14px rgba(224,69,123,0.6)); }
-  .ring-progress.urgent{ animation: pulseRing 0.6s ease-in-out infinite; }
-  @keyframes pulseRing{
-    0%,100%{ filter: drop-shadow(0 0 10px rgba(192,132,252,0.55)); }
-    50%{ filter: drop-shadow(0 0 22px rgba(192,132,252,0.95)); }
-  }
-
-  .time-display{ position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; }
-  .time{
-    font-family: "SF Mono", SFMono-Regular, ui-monospace, Menlo, Consolas, monospace;
-    font-size: 56px; font-weight: 700; letter-spacing: 0.02em;
-    color: var(--text); font-variant-numeric: tabular-nums;
-  }
-  .time.urgent{ color: var(--purple-bright); }
-  .next-phase{ margin-top: 4px; font-size: 11.5px; color: var(--muted); letter-spacing: 0.03em; text-align:center; padding: 0 20px; }
-
-  .controls{ display:grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-top: 6px; }
-  .controls .primary{ grid-column: span 3; }
-  #startBtn.running{ background: linear-gradient(120deg, #3f3a52, #2b2638); }
-
-  .seq-title{ margin: 22px 0 10px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.15em; color: var(--muted); text-align:center; }
-  .seq-track{
-    width: 100%; max-width: 440px; display:flex; gap: 4px;
-    overflow-x: auto; padding: 4px 2px 12px; scrollbar-width: thin;
-  }
-  .seq-track::-webkit-scrollbar{ height: 5px; }
-  .seq-track::-webkit-scrollbar-thumb{ background: var(--purple-dim); border-radius: 10px; }
-  .seg{
-    flex: 0 0 auto; min-width: 34px; height: 30px; border-radius: 8px;
-    background: var(--surface-2); border: 1px solid rgba(255,255,255,0.05);
-    display:flex; align-items:center; justify-content:center;
-    font-size: 10px; font-weight: 700; color: var(--muted); position: relative;
-  }
-  .seg.round{ border-color: rgba(192,132,252,0.2); }
-  .seg.rest{ opacity: 0.7; }
-  .seg.troca{ border-color: rgba(240,180,41,0.4); color: var(--amber); }
-  .seg.warmup, .seg.end{ border-color: rgba(224,69,123,0.3); }
-  .seg.done{ background: rgba(147,51,234,0.35); color: #fff; }
-  .seg.current{ background: var(--purple); color: #fff; box-shadow: 0 0 0 2px rgba(192,132,252,0.5); }
-  .seg.current.troca{ background: var(--amber); color:#221a00; }
-  .seg.current.rest{ background: var(--rest); }
-
-  .footer-note{ margin-top: 18px; font-size: 11px; color: #55506b; text-align:center; max-width: 400px; }
-
-  @media (max-width: 380px){
-    .ring-holder{ width: 220px; height: 220px; }
-    .time{ font-size: 46px; }
-  }
-  @media (prefers-reduced-motion: reduce){
-    .ring-progress.urgent{ animation: none; }
-    button, .ring-progress{ transition: none; }
-  }
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Workout App - Planos de Treino</title>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<div class="wrap">
+    <div class="container">
+        <!-- Menu de Seleção -->
+        <div id="workout-selector" class="selector-container">
+            <div class="header">
+                <h1>💪 Meu Treino</h1>
+                <p>Selecione seu plano de treino</p>
+            </div>
 
-  <div class="brand">
-    <div class="mark">Workout Timer</div>
-    <h1>Cronômetro de Treino</h1>
-  </div>
+            <div class="workout-buttons">
+                <button class="workout-btn btn-a" onclick="selectWorkout('A')">
+                    <span class="workout-letter">A</span>
+                    <span class="workout-name">Quadríceps</span>
+                </button>
+                <button class="workout-btn btn-b" onclick="selectWorkout('B')">
+                    <span class="workout-letter">B</span>
+                    <span class="workout-name">Posterior</span>
+                </button>
+                <button class="workout-btn btn-c" onclick="selectWorkout('C')">
+                    <span class="workout-letter">C</span>
+                    <span class="workout-name">Superiores</span>
+                </button>
+            </div>
 
-  <!-- ============ TELA DE CONFIGURAÇÕES ============ -->
-  <div class="card" id="configView">
-    <h2>Configure a aula</h2>
-    <p class="sub">Defina os tempos e o número de rounds. O total da aula é calculado automaticamente.</p>
+            <!-- Estatísticas -->
+            <div class="stats-section">
+                <h3>📊 Treinos Este Mês</h3>
+                <div id="history-stats" class="stats-grid"></div>
+                <button id="clear-history-btn" class="secondary-btn">Limpar Histórico</button>
+            </div>
+        </div>
 
-    <div class="field-group">
-      <label>Aquecimento</label>
-      <div class="time-inputs">
-        <input type="number" id="cfgWarmupMin" min="0" max="60" value="5"> <span>min</span>
-        <input type="number" id="cfgWarmupSec" min="0" max="59" value="0"> <span>seg</span>
-      </div>
+        <!-- Container do Treino -->
+        <div id="workout-container" class="workout-container" style="display: none;">
+            <div class="workout-header">
+                <h2 id="workout-title"></h2>
+                <button class="back-btn" onclick="backToMenu()">← Voltar</button>
+            </div>
+
+            <!-- Informações do Exercício -->
+            <div id="exercise-container" class="exercise-container">
+                <div class="exercise-info">
+                    <h3 id="exercise-name"></h3>
+                    <div class="exercise-details">
+                        <div class="detail">
+                            <span class="label">Séries</span>
+                            <span id="sets-info" class="value"></span>
+                        </div>
+                        <div class="detail">
+                            <span class="label">Repetições</span>
+                            <span id="reps-info" class="value"></span>
+                        </div>
+                    </div>
+                    <p id="exercise-progress" class="progress-text"></p>
+                </div>
+
+                <!-- Timer de Descanso -->
+                <div id="timer-container" class="timer-container" style="display: none;">
+                    <p>Tempo de Descanso</p>
+                    <div class="timer-display" id="rest-timer">1:30</div>
+                </div>
+
+                <!-- Botões de Controle -->
+                <div class="controls">
+                    <button id="complete-set-btn" class="btn-primary">✓ Série Concluída</button>
+                    
+                    <div class="navigation-buttons">
+                        <button id="prev-exercise-btn" class="btn-secondary">← Anterior</button>
+                        <button id="next-exercise-btn" class="btn-secondary">Próximo →</button>
+                    </div>
+                    
+                    <button id="complete-workout-btn" class="btn-success">🎉 Completar Treino</button>
+                </div>
+            </div>
+        </div>
     </div>
 
-    <div class="row-inline">
-      <div class="field-group">
-        <label>Nº de Rounds</label>
-        <input type="number" id="cfgRounds" min="1" max="30" value="10" style="width:100%;">
-      </div>
-      <div class="field-group">
-        <label>Troca a cada</label>
-        <input type="number" id="cfgTrocaEvery" min="0" max="30" value="3" style="width:100%;">
-        <div class="field-hint">rounds (0 = sem trocas)</div>
-      </div>
-    </div>
-
-    <div class="field-group">
-      <label>Duração do Round / Exercício</label>
-      <div class="time-inputs">
-        <input type="number" id="cfgRoundMin" min="0" max="60" value="3"> <span>min</span>
-        <input type="number" id="cfgRoundSec" min="0" max="59" value="30"> <span>seg</span>
-      </div>
-    </div>
-
-    <div class="field-group">
-      <label>Descanso entre rounds</label>
-      <div class="time-inputs">
-        <input type="number" id="cfgRestMin" min="0" max="60" value="0"> <span>min</span>
-        <input type="number" id="cfgRestSec" min="0" max="59" value="30"> <span>seg</span>
-      </div>
-    </div>
-
-    <div class="field-group">
-      <label>Duração da Troca</label>
-      <div class="time-inputs">
-        <input type="number" id="cfgTrocaMin" min="0" max="60" value="1"> <span>min</span>
-        <input type="number" id="cfgTrocaSec" min="0" max="59" value="0"> <span>seg</span>
-      </div>
-    </div>
-
-    <div class="field-group">
-      <label>Encerramento</label>
-      <div class="time-inputs">
-        <input type="number" id="cfgEndMin" min="0" max="60" value="1"> <span>min</span>
-        <input type="number" id="cfgEndSec" min="0" max="59" value="0"> <span>seg</span>
-      </div>
-    </div>
-
-    <div class="total-box">
-      <span class="lbl">Tempo total da aula</span>
-      <span class="val" id="totalTimeVal">—</span>
-    </div>
-    <div class="breakdown" id="breakdownVal"></div>
-
-    <button id="startClassBtn" class="btn-primary btn-full">Montar e Iniciar Aula</button>
-  </div>
-
-  <!-- ============ TELA DO CRONÔMETRO ============ -->
-  <div class="card" id="timerView">
-    <div class="top-actions">
-      <button class="link-btn" id="editConfigBtn">Editar configurações</button>
-    </div>
-
-    <div class="phase-row">
-      <span id="phaseLabel" class="phase-label">Aquecimento</span>
-      <span id="roundCount" class="round-count">Round — / 10</span>
-    </div>
-
-    <div class="ring-holder">
-      <svg viewBox="0 0 240 240">
-        <circle class="ring-bg" cx="120" cy="120" r="104"></circle>
-        <circle id="ringProgress" class="ring-progress" cx="120" cy="120" r="104"
-                stroke-dasharray="653.45" stroke-dashoffset="0"></circle>
-      </svg>
-      <div class="time-display">
-        <div id="timeText" class="time">5:00</div>
-        <div id="nextPhase" class="next-phase">Próximo: Round 1</div>
-      </div>
-    </div>
-
-    <div class="controls">
-      <button id="startBtn" class="primary btn-primary">Iniciar</button>
-      <button id="pauseBtn">Pausar</button>
-      <button id="resetBtn" class="btn-danger">Reiniciar</button>
-      <button id="backBtn">Voltar</button>
-      <button id="forwardBtn">Avançar</button>
-    </div>
-  </div>
-
-  <div class="seq-title" id="seqTitleWrap" style="display:none;">Sequência do treino</div>
-  <div id="seqTrack" class="seq-track"></div>
-
-  <div class="footer-note" id="footerNote" style="display:none;">Aviso sonoro ao final de cada etapa, com sinal reforçado nas trocas de round.</div>
-
-</div>
-
-<script>
-(function(){
-  // ---------- Elementos: Configuração ----------
-  const configView = document.getElementById('configView');
-  const timerView = document.getElementById('timerView');
-  const seqTitleWrap = document.getElementById('seqTitleWrap');
-  const footerNote = document.getElementById('footerNote');
-
-  const cfg = {
-    warmupMin: document.getElementById('cfgWarmupMin'),
-    warmupSec: document.getElementById('cfgWarmupSec'),
-    rounds: document.getElementById('cfgRounds'),
-    trocaEvery: document.getElementById('cfgTrocaEvery'),
-    roundMin: document.getElementById('cfgRoundMin'),
-    roundSec: document.getElementById('cfgRoundSec'),
-    restMin: document.getElementById('cfgRestMin'),
-    restSec: document.getElementById('cfgRestSec'),
-    trocaMin: document.getElementById('cfgTrocaMin'),
-    trocaSec: document.getElementById('cfgTrocaSec'),
-    endMin: document.getElementById('cfgEndMin'),
-    endSec: document.getElementById('cfgEndSec'),
-  };
-  const totalTimeVal = document.getElementById('totalTimeVal');
-  const breakdownVal = document.getElementById('breakdownVal');
-  const startClassBtn = document.getElementById('startClassBtn');
-  const editConfigBtn = document.getElementById('editConfigBtn');
-
-  function toSec(minEl, secEl){
-    const m = Math.max(0, parseInt(minEl.value, 10) || 0);
-    const s = Math.max(0, Math.min(59, parseInt(secEl.value, 10) || 0));
-    return m * 60 + s;
-  }
-
-  function fmtLong(totalSeconds){
-    const h = Math.floor(totalSeconds / 3600);
-    const m = Math.floor((totalSeconds % 3600) / 60);
-    const s = totalSeconds % 60;
-    let parts = [];
-    if (h > 0) parts.push(h + 'h');
-    parts.push(String(m).padStart(h > 0 ? 2 : 1, '0') + 'min');
-    if (s > 0) parts.push(String(s).padStart(2,'0') + 's');
-    return parts.join(' ');
-  }
-
-  function readConfig(){
-    const warmup = toSec(cfg.warmupMin, cfg.warmupSec);
-    const rounds = Math.max(1, parseInt(cfg.rounds.value, 10) || 1);
-    const trocaEvery = Math.max(0, parseInt(cfg.trocaEvery.value, 10) || 0);
-    const roundDur = toSec(cfg.roundMin, cfg.roundSec);
-    const restDur = toSec(cfg.restMin, cfg.restSec);
-    const trocaDur = toSec(cfg.trocaMin, cfg.trocaSec);
-    const endDur = toSec(cfg.endMin, cfg.endSec);
-    return { warmup, rounds, trocaEvery, roundDur, restDur, trocaDur, endDur };
-  }
-
-  function buildSequence(c){
-    const seq = [];
-    if (c.warmup > 0) seq.push({ type:'warmup', label:'Aquecimento', duration: c.warmup, round: null });
-
-    for (let r = 1; r <= c.rounds; r++){
-      seq.push({ type:'round', label:'Round ' + r, duration: c.roundDur, round: r });
-      if (r === c.rounds) continue;
-
-      const isTroca = c.trocaEvery > 0 && (r % c.trocaEvery === 0);
-      if (isTroca){
-        if (c.trocaDur > 0) seq.push({ type:'troca', label:'Troca', duration: c.trocaDur, round: r });
-      } else {
-        if (c.restDur > 0) seq.push({ type:'rest', label:'Descanso', duration: c.restDur, round: r });
-      }
-    }
-
-    if (c.endDur > 0) seq.push({ type:'end', label:'Encerramento', duration: c.endDur, round: null });
-    return seq;
-  }
-
-  function updateTotals(){
-    const c = readConfig();
-    const seq = buildSequence(c);
-    const total = seq.reduce((sum, p) => sum + p.duration, 0);
-
-    const numRounds = c.rounds;
-    const numTrocas = c.trocaEvery > 0 ? Math.floor((c.rounds - 1) / c.trocaEvery) : 0;
-    const numRests = Math.max(0, (c.rounds - 1) - numTrocas);
-
-    totalTimeVal.textContent = fmtLong(total);
-    breakdownVal.innerHTML =
-      (c.warmup > 0 ? ('Aquecimento: <b>' + fmtLong(c.warmup) + '</b> · ') : '') +
-      numRounds + ' rounds de <b>' + fmtLong(c.roundDur) + '</b>' +
-      (numRests > 0 ? (' · ' + numRests + ' descansos de <b>' + fmtLong(c.restDur) + '</b>') : '') +
-      (numTrocas > 0 ? (' · ' + numTrocas + ' trocas de <b>' + fmtLong(c.trocaDur) + '</b>') : '') +
-      (c.endDur > 0 ? (' · Encerramento: <b>' + fmtLong(c.endDur) + '</b>') : '');
-
-    return { c, seq };
-  }
-
-  Object.values(cfg).forEach(el => el.addEventListener('input', updateTotals));
-  updateTotals();
-
-  // ---------- Estado do cronômetro ----------
-  let SEQ = [];
-  const RADIUS = 104;
-  const CIRC = 2 * Math.PI * RADIUS;
-
-  let idx = 0;
-  let remaining = 0;
-  let running = false;
-  let tickHandle = null;
-  let lastTimestamp = null;
-
-  const phaseLabelEl = document.getElementById('phaseLabel');
-  const roundCountEl = document.getElementById('roundCount');
-  const timeTextEl = document.getElementById('timeText');
-  const nextPhaseEl = document.getElementById('nextPhase');
-  const ringEl = document.getElementById('ringProgress');
-  const seqTrackEl = document.getElementById('seqTrack');
-
-  const startBtn = document.getElementById('startBtn');
-  const pauseBtn = document.getElementById('pauseBtn');
-  const resetBtn = document.getElementById('resetBtn');
-  const backBtn = document.getElementById('backBtn');
-  const forwardBtn = document.getElementById('forwardBtn');
-
-  ringEl.setAttribute('stroke-dasharray', CIRC.toFixed(2));
-
-  // ---------- Áudio (Web Audio API) ----------
-  let audioCtx = null;
-  function ensureAudio(){
-    if (!audioCtx){
-      const AC = window.AudioContext || window.webkitAudioContext;
-      audioCtx = new AC();
-    }
-    if (audioCtx.state === 'suspended') audioCtx.resume();
-  }
-
-  function beep(freq, dur, delay, gainPeak){
-    if (!audioCtx) return;
-    const t0 = audioCtx.currentTime + (delay || 0);
-    const osc = audioCtx.createOscillator();
-    const gain = audioCtx.createGain();
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(freq, t0);
-    gain.gain.setValueAtTime(0.0001, t0);
-    gain.gain.exponentialRampToValueAtTime(gainPeak || 0.35, t0 + 0.02);
-    gain.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
-    osc.connect(gain);
-    gain.connect(audioCtx.destination);
-    osc.start(t0);
-    osc.stop(t0 + dur + 0.05);
-  }
-
-  function playTransitionSound(nextType){
-    ensureAudio();
-    if (nextType === 'troca'){
-      beep(1046, 0.18, 0, 0.45);
-      beep(1046, 0.18, 0.22, 0.45);
-      beep(1318, 0.28, 0.44, 0.5);
-    } else if (nextType === 'round'){
-      beep(880, 0.16, 0, 0.4);
-      beep(880, 0.16, 0.2, 0.4);
-    } else if (nextType === 'end'){
-      beep(660, 0.2, 0, 0.4);
-      beep(880, 0.2, 0.25, 0.4);
-      beep(1046, 0.4, 0.5, 0.45);
-    } else {
-      beep(660, 0.2, 0, 0.35);
-    }
-  }
-
-  function playCountdownTick(){
-    ensureAudio();
-    beep(520, 0.09, 0, 0.25);
-  }
-
-  function formatTime(s){
-    const m = Math.floor(s / 60);
-    const sec = s % 60;
-    return m + ':' + String(sec).padStart(2, '0');
-  }
-
-  function phaseClass(type){
-    if (type === 'rest') return 'rest';
-    if (type === 'troca') return 'troca';
-    if (type === 'end') return 'end';
-    return '';
-  }
-
-  function render(){
-    if (!SEQ.length) return;
-    const phase = SEQ[idx];
-    const cls = phaseClass(phase.type);
-
-    phaseLabelEl.textContent = phase.label;
-    phaseLabelEl.className = 'phase-label' + (cls ? ' ' + cls : '');
-
-    const totalRounds = SEQ.filter(p => p.type === 'round').length;
-    if (phase.round){
-      roundCountEl.textContent = 'Round ' + phase.round + ' / ' + totalRounds;
-    } else if (phase.type === 'warmup'){
-      roundCountEl.textContent = 'Aquecimento';
-    } else if (phase.type === 'end'){
-      roundCountEl.textContent = 'Treino concluído';
-    } else {
-      roundCountEl.textContent = '— / ' + totalRounds;
-    }
-
-    timeTextEl.textContent = formatTime(remaining);
-
-    const urgent = remaining <= 5 && remaining > 0 && phase.type !== 'end';
-    timeTextEl.classList.toggle('urgent', urgent);
-    ringEl.classList.toggle('urgent', urgent && phase.type === 'round');
-
-    const next = SEQ[idx + 1];
-    nextPhaseEl.textContent = next ? ('Próximo: ' + next.label) : 'Fim do treino';
-
-    const frac = phase.duration > 0 ? (remaining / phase.duration) : 0;
-    const offset = CIRC * (1 - frac);
-    ringEl.style.strokeDashoffset = offset.toFixed(2);
-    ringEl.className = 'ring-progress' + (cls ? ' ' + cls : '');
-
-    renderSeqTrack();
-  }
-
-  function renderSeqTrack(){
-    seqTrackEl.innerHTML = '';
-    SEQ.forEach((phase, i) => {
-      const seg = document.createElement('div');
-      let label;
-      if (phase.type === 'warmup') label = 'AQ';
-      else if (phase.type === 'end') label = 'FIM';
-      else if (phase.type === 'round') label = 'R' + phase.round;
-      else if (phase.type === 'troca') label = 'TR';
-      else label = '·';
-
-      seg.className = 'seg ' + phase.type;
-      if (i < idx) seg.classList.add('done');
-      if (i === idx) seg.classList.add('current');
-      seg.textContent = label;
-      seqTrackEl.appendChild(seg);
-    });
-
-    const current = seqTrackEl.querySelector('.current');
-    if (current) current.scrollIntoView({ inline: 'center', block: 'nearest' });
-  }
-
-  function tick(timestamp){
-    if (!running) return;
-    if (lastTimestamp === null) lastTimestamp = timestamp;
-    const delta = (timestamp - lastTimestamp) / 1000;
-
-    if (delta >= 1){
-      lastTimestamp = timestamp;
-      remaining -= 1;
-
-      if (remaining <= 3 && remaining > 0){
-        playCountdownTick();
-      }
-
-      if (remaining < 0){
-        advancePhase(true);
-      } else {
-        render();
-      }
-    }
-
-    if (running) tickHandle = requestAnimationFrame(tick);
-  }
-
-  function advancePhase(playSound){
-    if (idx < SEQ.length - 1){
-      idx += 1;
-      remaining = SEQ[idx].duration;
-      if (playSound) playTransitionSound(SEQ[idx].type);
-      render();
-    } else {
-      remaining = 0;
-      running = false;
-      updateStartButton();
-      render();
-      if (tickHandle) cancelAnimationFrame(tickHandle);
-    }
-  }
-
-  function goBackPhase(){
-    if (idx > 0){
-      idx -= 1;
-    }
-    remaining = SEQ[idx].duration;
-    render();
-  }
-
-  function updateStartButton(){
-    if (running){
-      startBtn.textContent = 'Em andamento…';
-      startBtn.classList.add('running');
-    } else {
-      startBtn.textContent = 'Iniciar';
-      startBtn.classList.remove('running');
-    }
-  }
-
-  function stopEngine(){
-    running = false;
-    if (tickHandle) cancelAnimationFrame(tickHandle);
-    updateStartButton();
-  }
-
-  // ---------- Controles do cronômetro ----------
-  startBtn.addEventListener('click', () => {
-    if (running || !SEQ.length) return;
-    ensureAudio();
-    running = true;
-    lastTimestamp = null;
-    updateStartButton();
-    tickHandle = requestAnimationFrame(tick);
-  });
-
-  pauseBtn.addEventListener('click', () => { stopEngine(); });
-
-  resetBtn.addEventListener('click', () => {
-    stopEngine();
-    idx = 0;
-    remaining = SEQ.length ? SEQ[0].duration : 0;
-    render();
-  });
-
-  forwardBtn.addEventListener('click', () => { advancePhase(false); });
-  backBtn.addEventListener('click', () => { goBackPhase(); });
-
-  // ---------- Transição Config <-> Timer ----------
-  startClassBtn.addEventListener('click', () => {
-    const { seq } = updateTotals();
-    if (!seq.length){
-      alert('Defina ao menos uma etapa com duração maior que zero.');
-      return;
-    }
-    SEQ = seq;
-    idx = 0;
-    remaining = SEQ[0].duration;
-    stopEngine();
-    render();
-
-    configView.style.display = 'none';
-    timerView.style.display = 'block';
-    seqTitleWrap.style.display = 'block';
-    footerNote.style.display = 'block';
-  });
-
-  editConfigBtn.addEventListener('click', () => {
-    stopEngine();
-    timerView.style.display = 'none';
-    configView.style.display = 'block';
-    seqTitleWrap.style.display = 'none';
-    footerNote.style.display = 'none';
-  });
-})();
-</script>
+    <script src="workouts.js"></script>
+    <script src="storage.js"></script>
+    <script src="app.js"></script>
 </body>
 </html>
