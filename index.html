@@ -140,7 +140,7 @@
   .btn-danger{ color: var(--danger); border-color: rgba(224,69,123,0.3); }
 
   /* ---------- Tela do Timer ---------- */
-  #timerView{ display:none; }
+  #timerView{ display:block; margin-top: 18px; }
 
   .top-actions{ display:flex; justify-content: flex-end; margin-bottom: 4px; }
   .link-btn{
@@ -1032,10 +1032,10 @@
     stopEngine();
     renderTimer();
 
-    configView.style.display = 'none';
     timerView.style.display = 'block';
     seqTitleWrap.style.display = 'block';
     footerNote.style.display = 'block';
+    window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
   });
 
   startBtn.addEventListener('click', () => {
@@ -1060,10 +1060,9 @@
 
   editConfigBtn.addEventListener('click', () => {
     stopEngine();
-    timerView.style.display = 'none';
-    configView.style.display = 'block';
     seqTitleWrap.style.display = 'none';
     footerNote.style.display = 'none';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   });
 
   document.getElementById('openManagerBtn').addEventListener('click', createManagerModal);
