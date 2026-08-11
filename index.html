@@ -243,7 +243,7 @@
   <!-- ============ TELA DE CONFIGURAÇÕES ============ -->
   <div class="card" id="configView">
     <h2>Configure a aula</h2>
-    <p class="sub">Defina os tempos e o número de rounds. O total da aula é calculado automaticamente.</p>
+    <p class="sub">Defina os tempos e o número de rounds. Cada round, descanso e troca podem ser ajustados antes de começar a aula.</p>
 
     <div class="field-group">
       <label>Aquecimento</label>
@@ -813,6 +813,13 @@
     renderManager();
   }
 
+  function getExerciseNameById(exerciseId){
+    if (!exerciseId) return '';
+    const exercises = readJSON(STORAGE.exercises, []);
+    const exercise = exercises.find(item => item.id === exerciseId);
+    return exercise ? exercise.name : '';
+  }
+
   function currentExerciseIdForPanel(){
     if (!SEQ.length) return null;
     const phase = SEQ[idx];
@@ -876,12 +883,16 @@
     const phase = SEQ[idx];
     const cls = phaseClass(phase.type);
     const totalRounds = SEQ.filter(item => item.type === 'round').length;
+    const exerciseName = phase.type === 'round' ? getExerciseNameById(phase.exerciseId) : '';
+    const next = SEQ[idx + 1];
+    const nextExerciseName = next && next.type === 'round' ? getExerciseNameById(next.exerciseId) : '';
 
     phaseLabelEl.textContent = phase.label;
     phaseLabelEl.className = 'phase-label' + (cls ? ' ' + cls : '');
 
     if (phase.round) {
-      roundCountEl.textContent = 'Round ' + phase.round + ' / ' + totalRounds;
+      const detail = exerciseName ? ' · ' + exerciseName : '';
+      roundCountEl.textContent = 'Round ' + phase.round + ' / ' + totalRounds + detail;
     } else if (phase.type === 'warmup') {
       roundCountEl.textContent = 'Aquecimento';
     } else if (phase.type === 'end') {
@@ -891,8 +902,9 @@
     }
 
     timeTextEl.textContent = formatClock(remaining);
-    const next = SEQ[idx + 1];
-    nextPhaseEl.textContent = next ? 'Próximo: ' + next.label : 'Fim do treino';
+    nextPhaseEl.textContent = next
+      ? 'Próximo: ' + next.label + (nextExerciseName ? ' · ' + nextExerciseName : '')
+      : 'Fim do treino';
 
     const urgent = remaining <= 5 && remaining > 0 && phase.type !== 'end';
     timeTextEl.classList.toggle('urgent', urgent);
