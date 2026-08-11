@@ -59,14 +59,14 @@
       <div style="display:flex;gap:8px;align-items:center">
         <input id="newName" type="text" placeholder="Nome do round (ex: Circuito)" style="flex:1;padding:8px;border-radius:8px;border:1px solid #111;background:#050505;color:var(--fg)">
         <input id="newDur" type="number" value="60" min="1" style="width:90px">
-        <button id="addRound" class="btn primary">Adicionar</button>
+        <button id="addRound" type="button" class="btn primary">Adicionar</button>
       </div>
 
       <div class="list" id="rounds"></div>
 
       <div style="display:flex;gap:8px;margin-top:8px">
-        <button id="applyAllRest" class="btn small">Aplicar descanso a todos</button>
-        <button id="clearAll" class="btn small">Limpar</button>
+        <button id="applyAllRest" type="button" class="btn small">Aplicar descanso a todos</button>
+        <button id="clearAll" type="button" class="btn small">Limpar</button>
       </div>
 
       <div class="meta">Dica: edite nome e duração de cada round. As alterações são salvas automaticamente.</div>
@@ -91,11 +91,11 @@
       </div>
 
       <div class="controls">
-        <button id="prev" class="btn">◀</button>
-        <button id="start" class="btn primary">Iniciar</button>
-        <button id="pause" class="btn">Pausar</button>
-        <button id="next" class="btn">▶</button>
-        <button id="reset" class="btn">Reiniciar</button>
+        <button id="prev" type="button" class="btn">◀</button>
+        <button id="start" type="button" class="btn primary">Iniciar</button>
+        <button id="pause" type="button" class="btn">Pausar</button>
+        <button id="next" type="button" class="btn">▶</button>
+        <button id="reset" type="button" class="btn">Reiniciar</button>
       </div>
 
       <div class="meta" id="info">Round 0 / 0 • Total: 00:00</div>
