@@ -34,6 +34,9 @@
   .ring .center{position:absolute;display:flex;flex-direction:column;align-items:center}
 
   @media(max-width:880px){.wrap{grid-template-columns:1fr;padding:12px}.timer{padding:18px}.time{font-size:44px}}
+  .round.dragging{opacity:0.6;transform:scale(0.995)}
+  .round.drag-over-top{outline:2px dashed var(--accent);outline-offset:-6px}
+  .round.drag-over-bottom{outline:2px dashed var(--accent);outline-offset:-6px}
 </style>
 </head>
 <body>
@@ -59,14 +62,14 @@
       <div style="display:flex;gap:8px;align-items:center">
         <input id="newName" type="text" placeholder="Nome do round (ex: Circuito)" style="flex:1;padding:8px;border-radius:8px;border:1px solid #111;background:#050505;color:var(--fg)">
         <input id="newDur" type="number" value="60" min="1" style="width:90px">
-        <button id="addRound" class="btn primary">Adicionar</button>
+        <button id="addRound" type="button" class="btn primary">Adicionar</button>
       </div>
 
-      <div class="list" id="rounds"></div>
+      <div><label style="font-weight:600;margin-bottom:6px;display:block;color:var(--muted)">Blocos adicionados</label><div class="list" id="rounds"></div></div>
 
       <div style="display:flex;gap:8px;margin-top:8px">
-        <button id="applyAllRest" class="btn small">Aplicar descanso a todos</button>
-        <button id="clearAll" class="btn small">Limpar</button>
+        <button id="applyAllRest" type="button" class="btn small">Aplicar descanso a todos</button>
+        <button id="clearAll" type="button" class="btn small">Limpar</button>
       </div>
 
       <div class="meta">Dica: edite nome e duração de cada round. As alterações são salvas automaticamente.</div>
@@ -91,11 +94,11 @@
       </div>
 
       <div class="controls">
-        <button id="prev" class="btn">◀</button>
-        <button id="start" class="btn primary">Iniciar</button>
-        <button id="pause" class="btn">Pausar</button>
-        <button id="next" class="btn">▶</button>
-        <button id="reset" class="btn">Reiniciar</button>
+        <button id="prev" type="button" class="btn">◀</button>
+        <button id="start" type="button" class="btn primary">Iniciar</button>
+        <button id="pause" type="button" class="btn">Pausar</button>
+        <button id="next" type="button" class="btn">▶</button>
+        <button id="reset" type="button" class="btn">Reiniciar</button>
       </div>
 
       <div class="meta" id="info">Round 0 / 0 • Total: 00:00</div>
@@ -113,8 +116,21 @@ els.warmup = document.getElementById('warmup'); els.rest = document.getElementBy
 const startBtn=document.getElementById('start'); const pauseBtn=document.getElementById('pause'); const resetBtn=document.getElementById('reset'); const prevBtn=document.getElementById('prev'); const nextBtn=document.getElementById('next'); const timeLeftEl=document.getElementById('timeLeft'); const phaseNameEl=document.getElementById('phaseName'); const infoEl=document.getElementById('info'); const progEl = document.getElementById('prog');
 
 function renderRounds(){els.rounds.innerHTML=''; store.rounds.forEach((r,i)=>{
-  const div=document.createElement('div'); div.className='round';
-  div.innerHTML = `<div class="name"><input data-i="${i}" class="rname" value="${escapeHtml(r.name)}" style="background:transparent;border:0;color:var(--fg)"></div><input data-i="${i}" class="rdur" type="number" value="${r.dur}" min="1"><button data-i="${i}" class="btn small del">✖</button>`;
+  const div=document.createElement('div'); div.className='round'; div.setAttribute('draggable','true'); div.dataset.index = i;
+  const disabledAttr = (typeof running !== 'undefined' && running) ? 'disabled' : '';
+  div.innerHTML = `<div class="name"><input data-i="${i}" class="rname" value="${escapeHtml(r.name)}" style="background:transparent;border:0;color:var(--fg)"></div><input data-i="${i}" class="rdur" type="number" value="${r.dur}" min="1"><div style="display:flex;gap:6px"><button data-i="${i}" class="btn small move-up" ${disabledAttr}>▲</button><button data-i="${i}" class="btn small move-down" ${disabledAttr}>▼</button><button data-i="${i}" class="btn small del" ${disabledAttr}>✖</button></div>`;
+
+  // drag handlers
+  div.addEventListener('dragstart', (e)=>{
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', i);
+    div.classList.add('dragging');
+  });
+  div.addEventListener('dragend', ()=>{ div.classList.remove('dragging'); const items = els.rounds.querySelectorAll('.round'); items.forEach(it=>it.classList.remove('drag-over-top','drag-over-bottom')); renderRounds(); });
+  div.addEventListener('dragover', (e)=>{ e.preventDefault(); const dragging = els.rounds.querySelector('.dragging'); if(!dragging) return; const rect = div.getBoundingClientRect(); const mid = rect.top + rect.height/2; if(e.clientY < mid){ div.classList.add('drag-over-top'); div.classList.remove('drag-over-bottom'); } else { div.classList.add('drag-over-bottom'); div.classList.remove('drag-over-top'); } });
+  div.addEventListener('dragleave', ()=>{ div.classList.remove('drag-over-top','drag-over-bottom'); });
+  div.addEventListener('drop', (e)=>{ e.preventDefault(); const from = Number(e.dataTransfer.getData('text/plain')); const to = Number(div.dataset.index); if(isNaN(from) || isNaN(to)) return; const rect = div.getBoundingClientRect(); const mid = rect.top + rect.height/2; let insertAt = to; if(e.clientY > mid) insertAt = to + 1; const item = store.rounds.splice(from,1)[0]; if(from < insertAt) insertAt--; store.rounds.splice(insertAt,0,item); save(); renderRounds(); });
+
   els.rounds.appendChild(div);
 });}
 function escapeHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
@@ -126,7 +142,21 @@ els.end.addEventListener('input',()=>{store.end=Math.max(0,parseInt(els.end.valu
 document.getElementById('addRound').addEventListener('click',()=>{const n=els.newName.value.trim()||(`Round ${store.rounds.length+1}`); const d=Math.max(1,parseInt(els.newDur.value)||60); store.rounds.push({name:n,dur:d}); save(); renderRounds();});
 
 els.rounds.addEventListener('input',e=>{const t=e.target; const i=Number(t.dataset.i); if(t.classList.contains('rname')){store.rounds[i].name = t.value; save();} if(t.classList.contains('rdur')){store.rounds[i].dur = Math.max(1,parseInt(t.value)||1); save();}});
-els.rounds.addEventListener('click',e=>{const b=e.target.closest('button.del'); if(!b) return; const i=Number(b.dataset.i); store.rounds.splice(i,1); save(); renderRounds();});
+els.rounds.addEventListener('click', e => {
+  const b = e.target.closest('button'); if(!b) return; const i = Number(b.dataset.i);
+  if(b.classList.contains('del')){
+    if(typeof running !== 'undefined' && running){ alert('Não é possível excluir enquanto o cronômetro está rodando.'); return; }
+    store.rounds.splice(i,1); save(); renderRounds(); return;
+  }
+  if(b.classList.contains('move-up')){
+    if(i>0){ const t = store.rounds[i-1]; store.rounds[i-1]=store.rounds[i]; store.rounds[i]=t; save(); renderRounds(); }
+    return;
+  }
+  if(b.classList.contains('move-down')){
+    if(i<store.rounds.length-1){ const t = store.rounds[i+1]; store.rounds[i+1]=store.rounds[i]; store.rounds[i]=t; save(); renderRounds(); }
+    return;
+  }
+});
 
 document.getElementById('applyAllRest').addEventListener('click',()=>{ if(!confirm('Aplicar descanso padrão para todos os rounds?')) return; store.rounds.forEach(r=>r.postRest = store.rest); save(); alert('Aplicado');});
 
