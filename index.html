@@ -56,6 +56,14 @@
         </select>
         <button id="addRound" type="button" class="btn primary">Adicionar</button>
       </div>
+      <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap;">
+        <label style="font-size:12px;color:var(--muted);align-self:center;margin-right:6px">Atalhos:</label>
+        <button type="button" class="btn small shortcut" data-name="Aquecimento">Aquecimento</button>
+        <button type="button" class="btn small shortcut" data-name="Round">Round</button>
+        <button type="button" class="btn small shortcut" data-name="Descanso">Descanso</button>
+        <button type="button" class="btn small shortcut" data-name="Troca">Troca</button>
+        <button type="button" class="btn small shortcut" data-name="Encerramento">Encerramento</button>
+      </div>
 
       <div><label style="font-weight:600;margin-bottom:6px;display:block;color:var(--muted)">Blocos adicionados</label><div class="list" id="rounds"></div></div>
 
@@ -134,11 +142,28 @@ function escapeHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;
 // addRound handler (exposed globally as fallback for pages)
 function addRoundHandler(){
   try{
-    const n = (els.newName.value || '').trim() || (`Round ${store.rounds.length+1}`);
+    let n = (els.newName.value || '').trim() || (`Round ${store.rounds.length+1}`);
     const raw = parseFloat(els.newDur.value) || 0;
     const unitEl = document.getElementById('newUnit');
     const unit = unitEl ? unitEl.value : 's';
     const d = Math.max(1, Math.round(raw * (unit === 'm' ? 60 : 1)));
+    // alias mapping for quick words
+    const aliasMap = {
+      'aquecimento': 'Aquecimento', 'aquec': 'Aquecimento',
+      'round': 'Round',
+      'rest': 'Descanso', 'descanso': 'Descanso',
+      'troca': 'Troca',
+      'encerramento': 'Encerramento','fim':'Encerramento'
+    };
+    const norm = n.toLowerCase();
+    for(const k in aliasMap){
+      if(norm === k || norm.startsWith(k + ' ') || norm.startsWith(k)){
+        // preserve suffix like "round 1"
+        const suffix = n.slice(k.length).trim();
+        n = aliasMap[k] + (suffix ? ' ' + suffix : '');
+        break;
+      }
+    }
     store.rounds.push({name: n, dur: d});
     save(); renderRounds();
     // clear inputs for convenience
@@ -150,6 +175,8 @@ function addRoundHandler(){
 }
 // attach listener if element exists
 const _btnAdd = document.getElementById('addRound'); if(_btnAdd){ _btnAdd.addEventListener('click', addRoundHandler); }
+// hook shortcut buttons
+const shortcutBtns = document.querySelectorAll('.shortcut'); if(shortcutBtns && shortcutBtns.length){ shortcutBtns.forEach(b=>{ b.addEventListener('click', ()=>{ els.newName.value = b.dataset.name || ''; els.newDur.focus(); }); }); }
 
 
 els.rounds.addEventListener('input', e => { const t = e.target; const i = Number(t.dataset.i); if(isNaN(i)) return; if(t.classList.contains('rname')){ store.rounds[i].name = t.value; save(); } if(t.classList.contains('rdur')){ // numeric input changed
