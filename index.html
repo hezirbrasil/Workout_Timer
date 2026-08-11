@@ -139,7 +139,22 @@ els.warmup.addEventListener('input',()=>{store.warmup=Math.max(0,parseInt(els.wa
 els.rest.addEventListener('input',()=>{store.rest=Math.max(0,parseInt(els.rest.value)||0); save();});
 els.end.addEventListener('input',()=>{store.end=Math.max(0,parseInt(els.end.value)||0); save();});
 
-document.getElementById('addRound').addEventListener('click',()=>{const n=els.newName.value.trim()||(`Round ${store.rounds.length+1}`); const d=Math.max(1,parseInt(els.newDur.value)||60); store.rounds.push({name:n,dur:d}); save(); renderRounds();});
+// addRound handler (exposed globally as fallback for pages)
+function addRoundHandler(){
+  try{
+    const n = (els.newName.value || '').trim() || (`Round ${store.rounds.length+1}`);
+    const d = Math.max(1, parseInt(els.newDur.value) || 60);
+    store.rounds.push({name: n, dur: d});
+    save(); renderRounds();
+    // clear inputs for convenience
+    els.newName.value = '';
+    els.newDur.value = d;
+    console.log('addRoundHandler: added', n, d);
+  }catch(e){ console.error('addRoundHandler error', e); alert('Erro ao adicionar bloco: '+e.message); }
+}
+// attach listener if element exists
+const _btnAdd = document.getElementById('addRound'); if(_btnAdd){ _btnAdd.addEventListener('click', addRoundHandler); _btnAdd.setAttribute('onclick','addRoundHandler()'); }
+
 
 els.rounds.addEventListener('input',e=>{const t=e.target; const i=Number(t.dataset.i); if(t.classList.contains('rname')){store.rounds[i].name = t.value; save();} if(t.classList.contains('rdur')){store.rounds[i].dur = Math.max(1,parseInt(t.value)||1); save();}});
 els.rounds.addEventListener('click', e => {
