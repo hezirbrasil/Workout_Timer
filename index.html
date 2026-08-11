@@ -182,7 +182,7 @@ function playTone(freq,duration,ctx){ try{ ctx = ctx || new (window.AudioContext
 function playBeep(kind){ if(kind==='start') playTone(880,0.25); else if(kind==='next') { playTone(1200,0.18); setTimeout(()=>playTone(800,0.12),120); } else playTone(640,0.18); }
 
 // timer engine
-let seq = []; let idx=0; let phase='idle'; let remaining=0; let raf=0; let last=0;
+var seq = window.seq || []; let idx=0; let phase='idle'; let remaining=0; let raf=0; let last=0;
 function buildSeq(){ seq = []; // use exactly the configured blocks in order
   store.rounds.forEach((r)=>{ seq.push({type: r.name || 'Bloco', dur: r.dur || 0}); }); }
 function start(){ if(window.running) return; if(seq.length===0) buildSeq(); if(phase==='idle' || phase==='Pronto'){ idx=0; remaining = seq[0]?.dur || 0; phase = seq[0]?.type || 'Pronto'; playBeep('start'); } window.running = true; last = performance.now(); updateDisplay(); if(raf) cancelAnimationFrame(raf); raf = requestAnimationFrame(tick); }
