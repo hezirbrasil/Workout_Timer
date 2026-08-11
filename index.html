@@ -149,7 +149,7 @@ function addRoundHandler(){
   }catch(e){ console.error('addRoundHandler error', e); alert('Erro ao adicionar bloco: '+e.message); }
 }
 // attach listener if element exists
-const _btnAdd = document.getElementById('addRound'); if(_btnAdd){ _btnAdd.addEventListener('click', addRoundHandler); _btnAdd.setAttribute('onclick','addRoundHandler()'); }
+const _btnAdd = document.getElementById('addRound'); if(_btnAdd){ _btnAdd.addEventListener('click', addRoundHandler); }
 
 
 els.rounds.addEventListener('input', e => { const t = e.target; const i = Number(t.dataset.i); if(isNaN(i)) return; if(t.classList.contains('rname')){ store.rounds[i].name = t.value; save(); } if(t.classList.contains('rdur')){ // numeric input changed
