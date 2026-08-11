@@ -140,6 +140,7 @@
 
       <hr style="opacity:0.05;margin:12px 0">
       <h2>Atribuir exercícios por round</h2>
+      <div class="muted" style="font-size:13px">Personalize duração do round e do bloco pós-round (padrão / descanso / troca / nenhum)</div>
       <div id="round-assigns" class="list"></div>
       <div style="display:flex;gap:8px;margin-top:8px">
         <button id="apply-defaults" class="btn ghost">Aplicar padrão (sequência)</button>
@@ -210,27 +211,26 @@ let store = {
   },
   strikes: ['Jab','Direto','Cross','Uppercut','Chute frontal'],
   exercises: [ {name:'Sombra', strikes:['Jab','Direto']}, {name:'Pad work', strikes:['Cross','Uppercut']}, {name:'Sparring Leve', strikes:['Jab','Chute frontal']} ],
-  roundAssigns: [], // {exerciseIndex, duration}
+  roundAssigns: [], // {exerciseIndex, duration, postType:'default'|'rest'|'switch'|'none', postDuration}
   runtime:{},
 }
 
 function load(){
   try{const s = localStorage.getItem(LS_KEY); if(s) Object.assign(store, JSON.parse(s)); }
   catch(e){console.warn(e)}
-  // ensure rounds array length
   ensureRoundAssigns();
 }
 function save(){ localStorage.setItem(LS_KEY, JSON.stringify(store)); }
 
 function ensureRoundAssigns(){
   const n = store.cfg.rounds || 1;
-  while(store.roundAssigns.length < n) store.roundAssigns.push({exerciseIndex:0,duration:store.cfg.roundDuration});
+  while(store.roundAssigns.length < n) store.roundAssigns.push({exerciseIndex:0,duration:store.cfg.roundDuration, postType:'default', postDuration:store.cfg.rest});
   if(store.roundAssigns.length > n) store.roundAssigns.splice(n);
 }
 
 // UI refs
 const els = {
-  cfgWarmup: document.getElementById('cfg-warmup'), cfgRounds: document.getElementById('cfg-rounds'), cfgRoundDuration: document.getElementById('cfg-round-duration'), cfgRest: document.getElementById('cfg-rest'), cfgSwitchEvery: document.getElementById('cfg-switch-every'), cfgSwitchDuration: document.getElementById('cfg-switch-duration'), cfgEnd: document.getElementById('cfg-end'), cfgName: document.getElementById('cfg-name'), totalDuration: document.getElementById('total-duration'), strikesList: document.getElementById('strikes-list'), exList: document.getElementById('ex-list'), addStrike: document.getElementById('add-strike'), newStrike: document.getElementById('new-strike'), addEx: document.getElementById('add-ex'), newEx: document.getElementById('new-ex'), roundAssigns: document.getElementById('round-assigns'), applyDefaults: document.getElementById('apply-defaults'), clearStorage: document.getElementById('clear-storage'), phaseName: document.getElementById('phase-name'), timeLeft: document.getElementById('time-left'), roundInfo: document.getElementById('round-info'), metaChips: document.getElementById('meta-chips'), prog: document.getElementById('prog'), startBtn: document.getElementById('start'), pauseBtn: document.getElementById('pause'), resetBtn: document.getElementById('reset'), backBtn: document.getElementById('back'), forwardBtn: document.getElementById('forward'), nextBlock: document.getElementById('next-block'), quickRounds: document.getElementById('quick-rounds'), skipRest: document.getElementById('skip-to-rest'), skipSwitch: document.getElementById('skip-to-switch'), skipEnd: document.getElementById('skip-to-end'), cfgSwitchEveryEl: document.getElementById('cfg-switch-every')
+  cfgWarmup: document.getElementById('cfg-warmup'), cfgRounds: document.getElementById('cfg-rounds'), cfgRoundDuration: document.getElementById('cfg-round-duration'), cfgRest: document.getElementById('cfg-rest'), cfgSwitchEvery: document.getElementById('cfg-switch-every'), cfgSwitchDuration: document.getElementById('cfg-switch-duration'), cfgEnd: document.getElementById('cfg-end'), cfgName: document.getElementById('cfg-name'), totalDuration: document.getElementById('total-duration'), strikesList: document.getElementById('strikes-list'), exList: document.getElementById('ex-list'), addStrike: document.getElementById('add-strike'), newStrike: document.getElementById('new-strike'), addEx: document.getElementById('add-ex'), newEx: document.getElementById('new-ex'), roundAssigns: document.getElementById('round-assigns'), applyDefaults: document.getElementById('apply-defaults'), clearStorage: document.getElementById('clear-storage'), phaseName: document.getElementById('phase-name'), timeLeft: document.getElementById('time-left'), roundInfo: document.getElementById('round-info'), metaChips: document.getElementById('meta-chips'), prog: document.getElementById('prog'), startBtn: document.getElementById('start'), pauseBtn: document.getElementById('pause'), resetBtn: document.getElementById('reset'), backBtn: document.getElementById('back'), forwardBtn: document.getElementById('forward'), nextBlock: document.getElementById('next-block'), quickRounds: document.getElementById('quick-rounds'), skipRest: document.getElementById('skip-to-rest'), skipSwitch: document.getElementById('skip-to-switch'), skipEnd: document.getElementById('skip-to-end')
 }
 
 // Helpers
@@ -238,7 +238,17 @@ function fmt(s){ s = Math.max(0, Math.round(s)); const mm = Math.floor(s/60); co
 
 function computeTotal(){
   const c = store.cfg; const rounds = c.rounds; let total = c.warmup + c.end;
-  for(let i=0;i<rounds;i++){ total += (store.roundAssigns[i]?.duration || c.roundDuration); if(i<rounds-1) total += c.rest; if(c.switchEvery>0 && (i+1)%c.switchEvery===0 && (i!==rounds-1)) total += c.switchDuration; }
+  for(let i=0;i<rounds;i++){
+    total += (store.roundAssigns[i]?.duration || c.roundDuration);
+    if(i<rounds-1){
+      const post = store.roundAssigns[i]?.postType || 'default';
+      if(post==='default'){
+        if(c.switchEvery>0 && ((i+1)%c.switchEvery===0)) total += c.switchDuration; else total += c.rest;
+      } else if(post==='rest'){ total += (store.roundAssigns[i].postDuration || c.rest); }
+      else if(post==='switch'){ total += (store.roundAssigns[i].postDuration || c.switchDuration); }
+      else if(post==='none'){ /* nothing */ }
+    }
+  }
   return total;
 }
 
@@ -257,13 +267,18 @@ function renderExercises(){ els.exList.innerHTML=''; store.exercises.forEach((ex
 }); }
 
 function renderRoundAssigns(){ els.roundAssigns.innerHTML=''; store.roundAssigns.forEach((r,i)=>{
-  const div = document.createElement('div'); div.className='item'; const exOptions = store.exercises.map((ex,idx)=>`<option value="${idx}" ${idx===r.exerciseIndex?'selected':''}>${escapeHtml(ex.name)}</option>`).join('');
-  div.innerHTML = `<div style="flex:1"><div class="muted">Round ${i+1}</div><div style="display:flex;gap:8px;margin-top:6px"><select data-i="${i}" class="round-ex">${exOptions}</select><input data-i="${i}" type="number" value="${r.duration}" class="small" style="width:110px"/></div></div><div style="display:flex;flex-direction:column;gap:6px;margin-left:8px"><button class="btn" data-i="${i}" data-act="up">▲</button><button class="btn" data-i="${i}" data-act="down">▼</button></div>`;
+  const div = document.createElement('div'); div.className='item';
+  const exOptions = store.exercises.map((ex,idx)=>`<option value="${idx}" ${idx===r.exerciseIndex?'selected':''}>${escapeHtml(ex.name)}</option>`).join('');
+  const postType = r.postType || 'default';
+  div.innerHTML = `<div style="flex:1"><div class="muted">Round ${i+1}</div><div style="display:flex;gap:8px;margin-top:6px;align-items:center"><select data-i="${i}" class="round-ex">${exOptions}</select><input data-i="${i}" type="number" value="${r.duration}" class="small" style="width:110px"/><label style="font-size:12px;color:var(--muted);margin-left:6px">Pós:</label><select data-i="${i}" class="post-type"><option value="default" ${postType==='default'?'selected':''}>Padrão</option><option value="rest" ${postType==='rest'?'selected':''}>Descanso</option><option value="switch" ${postType==='switch'?'selected':''}>Troca</option><option value="none" ${postType==='none'?'selected':''}>Nenhum</option></select><input data-i="${i}" type="number" value="${r.postDuration||''}" class="small post-duration" placeholder="seg" style="width:90px;${postType==='default'?'display:none;':''}"/></div></div><div style="display:flex;flex-direction:column;gap:6px;margin-left:8px"><button class="btn" data-i="${i}" data-act="up">▲</button><button class="btn" data-i="${i}" data-act="down">▼</button></div>`;
   els.roundAssigns.appendChild(div);
 }); }
 
 function renderQuickRounds(){ els.quickRounds.innerHTML=''; store.roundAssigns.forEach((r,i)=>{
-  const div = document.createElement('div'); div.className='item'; div.innerHTML=`<div style="flex:1"><div class="name">Round ${i+1} — ${escapeHtml(store.exercises[r.exerciseIndex]?.name||'—')}</div><input type="number" data-i="${i}" value="${r.duration}" style="width:120px;margin-top:6px"/></div>`; els.quickRounds.appendChild(div);
+  const exName = store.exercises[r.exerciseIndex]?.name||'—';
+  const post = r.postType||'default';
+  const postLabel = post==='default'?'(padrão)':post==='rest'?'(desc)':'(troca)';
+  const div = document.createElement('div'); div.className='item'; div.innerHTML=`<div style="flex:1"><div class="name">Round ${i+1} — ${escapeHtml(exName)} ${post!=='none'?postLabel:''}</div><input type="number" data-i="${i}" value="${r.duration}" style="width:120px;margin-top:6px"/></div>`; els.quickRounds.appendChild(div);
 }); }
 
 // escape helper
@@ -271,51 +286,39 @@ function escapeHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt
 
 // bind events
 function bind(){
-  // config changes
   ['cfg-warmup','cfg-rounds','cfg-round-duration','cfg-rest','cfg-switch-every','cfg-switch-duration','cfg-end','cfg-name'].forEach(id=>{
     document.getElementById(id).addEventListener('input', onCfgChange);
   });
-  els.addStrike.addEventListener('click', ()=>{ const v=els.newStrike.value.trim(); if(!v) return; store.strikes.push(v); els.newStrike.value=''; save(); renderStrikes(); });
-  els.addEx.addEventListener('click', ()=>{ const v=els.newEx.value.trim(); if(!v) return; store.exercises.push({name:v,strikes:[]}); els.newEx.value=''; save(); renderExercises(); renderRoundAssigns(); renderQuickRounds(); updateMetaChips(); });
+  document.getElementById('add-strike').addEventListener('click', ()=>{ const v=document.getElementById('new-strike').value.trim(); if(!v) return; store.strikes.push(v); document.getElementById('new-strike').value=''; save(); renderStrikes(); });
+  document.getElementById('add-ex').addEventListener('click', ()=>{ const v=document.getElementById('new-ex').value.trim(); if(!v) return; store.exercises.push({name:v,strikes:[]}); document.getElementById('new-ex').value=''; save(); renderExercises(); renderRoundAssigns(); renderQuickRounds(); updateMetaChips(); });
 
-  els.strikesList.addEventListener('click', e=>{ const b=e.target.closest('button'); if(!b) return; const i=+b.dataset.i; const act=b.dataset.act; if(act==='del'){ store.strikes.splice(i,1); // also remove from exercises
-    store.exercises.forEach(ex=>ex.strikes = (ex.strikes||[]).filter(s=>store.strikes.includes(s))); save(); renderStrikes(); renderExercises(); }
-    if(act==='edit'){ const name = prompt('Editar golpe', store.strikes[i]); if(name){ store.strikes[i]=name; save(); renderStrikes(); renderExercises(); }}
+  els.strikesList.addEventListener('click', e=>{ const b=e.target.closest('button'); if(!b) return; const i=+b.dataset.i; const act=b.dataset.act; if(act==='del'){ store.strikes.splice(i,1); store.exercises.forEach(ex=>ex.strikes = (ex.strikes||[]).filter(s=>store.strikes.includes(s))); save(); renderStrikes(); renderExercises(); } if(act==='edit'){ const name = prompt('Editar golpe', store.strikes[i]); if(name){ store.strikes[i]=name; save(); renderStrikes(); renderExercises(); } } });
+
+  els.exList.addEventListener('click', e=>{ const b=e.target.closest('button'); if(!b) return; const i=+b.dataset.i; const act=b.dataset.act; if(act==='delEx'){ if(!confirm('Remover exercício?')) return; store.exercises.splice(i,1); store.roundAssigns.forEach(r=>{ if(r.exerciseIndex>=store.exercises.length) r.exerciseIndex=0 }); save(); renderExercises(); renderRoundAssigns(); renderQuickRounds(); updateMetaChips(); } if(act==='editEx'){ editExercise(i); } });
+
+  els.roundAssigns.addEventListener('change', e=>{
+    const sel = e.target.closest('select.round-ex'); if(sel){ const i=+sel.dataset.i; store.roundAssigns[i].exerciseIndex = +sel.value; save(); renderQuickRounds(); updateMetaChips(); }
+    const postSel = e.target.closest('select.post-type'); if(postSel){ const i=+postSel.dataset.i; store.roundAssigns[i].postType = postSel.value; // toggle visibility of post-duration input
+      const input = document.querySelector(`input.post-duration[data-i='${i}']`);
+      if(input) input.style.display = (postSel.value==='default' || postSel.value==='none') ? 'none' : 'inline-block'; save(); updateTotalUI(); }
+    const num = e.target.closest('input[type=number]'); if(num && num.dataset.i!==undefined){ const i=+num.dataset.i; if(num.classList.contains('post-duration')){ store.roundAssigns[i].postDuration = Math.max(0, +num.value || 0); } else { store.roundAssigns[i].duration = Math.max(1, +num.value); } save(); renderQuickRounds(); updateTotalUI(); }
   });
 
-  els.exList.addEventListener('click', e=>{ const b=e.target.closest('button'); if(!b) return; const i=+b.dataset.i; const act=b.dataset.act; if(act==='delEx'){ if(!confirm('Remover exercício?')) return; store.exercises.splice(i,1); // fix round indexes
-      store.roundAssigns.forEach(r=>{ if(r.exerciseIndex>=store.exercises.length) r.exerciseIndex=0 }); save(); renderExercises(); renderRoundAssigns(); renderQuickRounds(); updateMetaChips(); }
-    if(act==='editEx'){ editExercise(i); }
-  });
+  els.roundAssigns.addEventListener('click', e=>{ const b=e.target.closest('button'); if(!b) return; const i=+b.dataset.i; const act=b.dataset.act; if(act==='up' && i>0){ const t=store.roundAssigns[i-1]; store.roundAssigns[i-1]=store.roundAssigns[i]; store.roundAssigns[i]=t; save(); renderRoundAssigns(); renderQuickRounds(); } if(act==='down' && i<store.roundAssigns.length-1){ const t=store.roundAssigns[i+1]; store.roundAssigns[i+1]=store.roundAssigns[i]; store.roundAssigns[i]=t; save(); renderRoundAssigns(); renderQuickRounds(); } });
 
-  els.roundAssigns.addEventListener('change', e=>{ const sel = e.target.closest('select.round-ex'); if(sel){ const i=+sel.dataset.i; store.roundAssigns[i].exerciseIndex = +sel.value; save(); renderQuickRounds(); updateMetaChips(); } const num = e.target.closest('input[type=number]'); if(num && num.dataset.i!==undefined){ const i=+num.dataset.i; store.roundAssigns[i].duration = Math.max(1, +num.value); save(); renderQuickRounds(); updateTotalUI(); }});
-
-  els.roundAssigns.addEventListener('click', e=>{ const b=e.target.closest('button'); if(!b) return; const i=+b.dataset.i; const act=b.dataset.act; if(act==='up' && i>0){ const t=store.roundAssigns[i-1]; store.roundAssigns[i-1]=store.roundAssigns[i]; store.roundAssigns[i]=t; save(); renderRoundAssigns(); renderQuickRounds(); }
-    if(act==='down' && i<store.roundAssigns.length-1){ const t=store.roundAssigns[i+1]; store.roundAssigns[i+1]=store.roundAssigns[i]; store.roundAssigns[i]=t; save(); renderRoundAssigns(); renderQuickRounds(); }
-  });
-
-  els.applyDefaults.addEventListener('click', ()=>{ store.roundAssigns = []; ensureRoundAssigns(); // assign sequentially
-    for(let i=0;i<store.cfg.rounds;i++){ store.roundAssigns[i].exerciseIndex = i % store.exercises.length; store.roundAssigns[i].duration = store.cfg.roundDuration; } save(); renderRoundAssigns(); renderQuickRounds(); updateTotalUI(); });
+  els.applyDefaults.addEventListener('click', ()=>{ store.roundAssigns = []; ensureRoundAssigns(); for(let i=0;i<store.cfg.rounds;i++){ store.roundAssigns[i].exerciseIndex = i % store.exercises.length; store.roundAssigns[i].duration = store.cfg.roundDuration; store.roundAssigns[i].postType = 'default'; store.roundAssigns[i].postDuration = store.cfg.rest; } save(); renderRoundAssigns(); renderQuickRounds(); updateTotalUI(); });
 
   els.clearStorage.addEventListener('click', ()=>{ if(!confirm('Apagar configuração salva e retornar ao padrão?')) return; localStorage.removeItem(LS_KEY); location.reload(); });
 
-  // quick rounds edits
   els.quickRounds.addEventListener('input', e=>{ const inp = e.target; if(inp && inp.dataset && inp.dataset.i!==undefined){ const i=+inp.dataset.i; store.roundAssigns[i].duration = Math.max(1, +inp.value); save(); renderRoundAssigns(); updateTotalUI(); }});
 
-  // timer controls
   els.startBtn.addEventListener('click', ()=>timer.start()); els.pauseBtn.addEventListener('click', ()=>timer.pause()); els.resetBtn.addEventListener('click', ()=>timer.reset()); els.backBtn.addEventListener('click', ()=>timer.prev()); els.forwardBtn.addEventListener('click', ()=>timer.next()); els.skipRest.addEventListener('click', ()=>timer.skipTo('rest')); els.skipSwitch.addEventListener('click', ()=>timer.skipTo('switch')); els.skipEnd.addEventListener('click', ()=>timer.skipTo('end'));
 }
 
-function editExercise(i){ const ex = store.exercises[i]; const name = prompt('Nome do exercício', ex.name); if(name===null) return; ex.name = name.trim() || ex.name; // edit strikes association via simple checkbox dialog
-  const available = store.strikes; const chosen = new Set(ex.strikes||[]);
-  const promptBody = available.map(s=>`${chosen.has(s)?'[x]':'[ ]'} ${s}`).join('\n');
-  const res = prompt('Marque golpes separados por vírgula (nome exato)\nDisponíveis: '+available.join(', '), ex.strikes.join(', '));
-  if(res!==null){ ex.strikes = res.split(',').map(x=>x.trim()).filter(Boolean); save(); renderExercises(); renderRoundAssigns(); renderQuickRounds(); updateMetaChips(); }
-}
+function editExercise(i){ const ex = store.exercises[i]; const name = prompt('Nome do exercício', ex.name); if(name===null) return; ex.name = name.trim() || ex.name; const available = store.strikes; const res = prompt('Marque golpes separados por vírgula (nome exato)\nDisponíveis: '+available.join(', '), ex.strikes.join(', ')); if(res!==null){ ex.strikes = res.split(',').map(x=>x.trim()).filter(Boolean); save(); renderExercises(); renderRoundAssigns(); renderQuickRounds(); updateMetaChips(); } }
 
 // Timer engine
 const timer = (function(){
-  const PHASES = ['warmup','round','rest','switch','end'];
   let state = {running:false,phase:'idle',roundIndex:0,phaseRemaining:0};
   let tickId = null; let lastTs = null;
 
@@ -324,46 +327,49 @@ const timer = (function(){
   function start(){ if(state.running) return; if(state.phase==='idle') beginSequence(); state.running=true; lastTs = performance.now(); tickId = requestAnimationFrame(tick); }
   function pause(){ state.running=false; if(tickId){ cancelAnimationFrame(tickId); tickId=null; } updateUI(); }
   function reset(){ pause(); initFromStore(); }
-n  function beginSequence(){ // build first phase
-    if(store.cfg.warmup>0){ state.phase='warmup'; state.phaseRemaining = store.cfg.warmup; state.roundIndex=0; } else { // go to first round
-      state.phase='round'; state.roundIndex=0; state.phaseRemaining = store.roundAssigns[0]?.duration || store.cfg.roundDuration; }
-    playBeep(); updateUI(); }
 
-  function tick(ts){ if(!state.running) return; const dt = (ts - lastTs)/1000; lastTs = ts; state.phaseRemaining -= dt; if(state.phaseRemaining <= 0){ advancePhase(); }
-    updateUI(); tickId = requestAnimationFrame(tick); }
+  function beginSequence(){ if(store.cfg.warmup>0){ state.phase='warmup'; state.phaseRemaining = store.cfg.warmup; state.roundIndex=0; } else { state.phase='round'; state.roundIndex=0; state.phaseRemaining = store.roundAssigns[0]?.duration || store.cfg.roundDuration; } playBeep(); updateUI(); }
 
-  function advancePhase(){ // decide next based on current
-    const c = store.cfg; if(state.phase==='warmup'){ // go to round 0
-      state.phase = 'round'; state.roundIndex = 0; state.phaseRemaining = store.roundAssigns[0]?.duration || c.roundDuration; }
-    else if(state.phase==='round'){ // finished a round -> either rest or switch or end/next round      // if last round -> end      if(state.roundIndex >= c.rounds-1){ state.phase='end'; state.phaseRemaining = c.end; }
+  function tick(ts){ if(!state.running) return; const dt = (ts - lastTs)/1000; lastTs = ts; state.phaseRemaining -= dt; if(state.phaseRemaining <= 0){ advancePhase(); } updateUI(); tickId = requestAnimationFrame(tick); }
+
+  function advancePhase(){ const c = store.cfg; if(state.phase==='warmup'){ state.phase = 'round'; state.roundIndex = 0; state.phaseRemaining = store.roundAssigns[0]?.duration || c.roundDuration; }
+    else if(state.phase==='round'){
+      if(state.roundIndex >= c.rounds-1){ state.phase='end'; state.phaseRemaining = c.end; }
       else {
-        // after this round, if switchEvery triggers after completing (roundIndex+1)
-        if(c.switchEvery>0 && ((state.roundIndex+1) % c.switchEvery === 0)){
-          state.phase='switch'; state.phaseRemaining = c.switchDuration; }
-        else { state.phase='rest'; state.phaseRemaining = c.rest; }
+        // decide post action for this round
+        const post = store.roundAssigns[state.roundIndex]?.postType || 'default';
+        if(post==='default'){
+          if(c.switchEvery>0 && ((state.roundIndex+1) % c.switchEvery === 0)){
+            state.phase='switch'; state.phaseRemaining = c.switchDuration;
+          } else { state.phase='rest'; state.phaseRemaining = c.rest; }
+        } else if(post==='rest'){
+          state.phase='rest'; state.phaseRemaining = store.roundAssigns[state.roundIndex].postDuration || c.rest;
+        } else if(post==='switch'){
+          state.phase='switch'; state.phaseRemaining = store.roundAssigns[state.roundIndex].postDuration || c.switchDuration;
+        } else if(post==='none'){
+          // skip to next round immediately
+          state.roundIndex = Math.min(c.rounds-1, state.roundIndex+1);
+          state.phase='round'; state.phaseRemaining = store.roundAssigns[state.roundIndex]?.duration || c.roundDuration;
+        }
       }
     }
-    else if(state.phase==='rest' || state.phase==='switch'){ // move to next round      state.roundIndex = Math.min(c.rounds-1, state.roundIndex+1);
+    else if(state.phase==='rest' || state.phase==='switch'){
+      state.roundIndex = Math.min(c.rounds-1, state.roundIndex+1);
       state.phase='round'; state.phaseRemaining = store.roundAssigns[state.roundIndex]?.duration || c.roundDuration;
     }
     else if(state.phase==='end'){ state.phase='idle'; state.running=false; }
     playBeep(); updateUI(); if(!state.running && tickId){ cancelAnimationFrame(tickId); tickId=null; }
   }
-n  function next(){ // advance to next logical phase immediately    if(state.phase==='idle'){ beginSequence(); return; }
-    state.phaseRemaining = 0; if(state.running) lastTs = performance.now(); }
-  function prev(){ // go back to previous logical phase    const c=store.cfg; if(state.phase==='idle'){ initFromStore(); return; }    if(state.phase==='warmup'){ // nothing back      state.phaseRemaining = Math.min(state.phaseRemaining, store.cfg.warmup); }
-    else if(state.phase==='round'){ if(state.roundIndex>0){ // go to previous rest or round        state.roundIndex--; // set to round        state.phase='round'; state.phaseRemaining = store.roundAssigns[state.roundIndex]?.duration || c.roundDuration; }
-      else { // go to warmup or start        if(c.warmup>0){ state.phase='warmup'; state.phaseRemaining = c.warmup; } else { state.phase='round'; state.phaseRemaining = store.roundAssigns[0]?.duration || c.roundDuration; }}
-    }
+
+  function next(){ if(state.phase==='idle'){ beginSequence(); return; } state.phaseRemaining = 0; if(state.running) lastTs = performance.now(); }
+  function prev(){ const c=store.cfg; if(state.phase==='idle'){ initFromStore(); return; } if(state.phase==='warmup'){ state.phaseRemaining = Math.min(state.phaseRemaining, store.cfg.warmup); }
+    else if(state.phase==='round'){ if(state.roundIndex>0){ state.roundIndex--; state.phase='round'; state.phaseRemaining = store.roundAssigns[state.roundIndex]?.duration || c.roundDuration; } else { if(c.warmup>0){ state.phase='warmup'; state.phaseRemaining = c.warmup; } else { state.phase='round'; state.phaseRemaining = store.roundAssigns[0]?.duration || c.roundDuration; } } }
     else if(state.phase==='rest'){ state.phase='round'; state.phaseRemaining = store.roundAssigns[state.roundIndex]?.duration || c.roundDuration; }
-    else if(state.phase==='switch'){ // go back to previous round      state.phase='round'; state.phaseRemaining = store.roundAssigns[state.roundIndex]?.duration || c.roundDuration; }
+    else if(state.phase==='switch'){ state.phase='round'; state.phaseRemaining = store.roundAssigns[state.roundIndex]?.duration || c.roundDuration; }
     else if(state.phase==='end'){ state.phase = c.rounds>0 ? 'round' : 'idle'; state.phaseRemaining = store.roundAssigns[state.roundIndex]?.duration || c.roundDuration; }
     playBeep(); updateUI(); }
 
-  function skipTo(which){ if(which==='rest'){ state.phase='rest'; state.phaseRemaining = store.cfg.rest; }
-    else if(which==='switch'){ state.phase='switch'; state.phaseRemaining = store.cfg.switchDuration; }
-    else if(which==='end'){ state.phase='end'; state.phaseRemaining = store.cfg.end; }
-    playBeep(); updateUI(); }
+  function skipTo(which){ if(which==='rest'){ state.phase='rest'; state.phaseRemaining = store.cfg.rest; } else if(which==='switch'){ state.phase='switch'; state.phaseRemaining = store.cfg.switchDuration; } else if(which==='end'){ state.phase='end'; state.phaseRemaining = store.cfg.end; } playBeep(); updateUI(); }
 
   function playBeep(){ try{ const ctx = new (window.AudioContext || window.webkitAudioContext)(); const o = ctx.createOscillator(); const g = ctx.createGain(); o.type='sine'; o.frequency.value = 880; g.gain.value = 0.0001; o.connect(g); g.connect(ctx.destination); o.start(); g.gain.exponentialRampToValueAtTime(0.2, ctx.currentTime + 0.01); g.gain.exponentialRampToValueAtTime(0.00001, ctx.currentTime + 0.5); o.stop(ctx.currentTime + 0.6); }catch(e){ console.log('no audio'); } }
 
@@ -372,62 +378,32 @@ const timer = (function(){
   return {start,pause,reset,next,prev,initFromStore,getState,skipTo};
 })();
 
-function updateUI(){ const s = timer.getState(); const c = store.cfg; // phase label mapping
-  const labels = {idle:'Pronto', warmup:'Aquecimento', round:'Round', rest:'Descanso', switch:'Troca', end:'Encerramento'};
-  const p = s.phase==='idle' ? 'idle' : s.phase;
-  els.phaseName.textContent = labels[p] || p;
-  els.timeLeft.textContent = fmt(Math.ceil(s.phaseRemaining || 0));
-  // progress circle
-  const total = (()=>{
-    if(s.phase==='warmup') return c.warmup;
-    if(s.phase==='round') return store.roundAssigns[s.roundIndex]?.duration || c.roundDuration;
-    if(s.phase==='rest') return c.rest;
-    if(s.phase==='switch') return c.switchDuration;
-    if(s.phase==='end') return c.end; return 1;
-  })();
-  const rem = Math.max(0, s.phaseRemaining || 0);
-  const pct = total>0 ? (rem/total) : 0;
-  const circumference = 2*Math.PI*40; const dash = (circumference * pct).toFixed(2);
-  els.prog.setAttribute('stroke-dasharray', `${dash} ${circumference}`);
+function updateUI(){ const s = timer.getState(); const c = store.cfg; const labels = {idle:'Pronto', warmup:'Aquecimento', round:'Round', rest:'Descanso', switch:'Troca', end:'Encerramento'};
+  const p = s.phase==='idle' ? 'idle' : s.phase; els.phaseName.textContent = labels[p] || p; els.timeLeft.textContent = fmt(Math.ceil(s.phaseRemaining || 0));
 
-  // round info
-  const rounds = c.rounds || 0; const rIndex = s.roundIndex || 0;
-  els.roundInfo.textContent = s.phase==='idle' ? `Round 0 / ${rounds}` : `Round ${Math.min(rIndex+1, rounds)} / ${rounds}`;
+  const total = (()=>{ if(s.phase==='warmup') return c.warmup; if(s.phase==='round') return store.roundAssigns[s.roundIndex]?.duration || c.roundDuration; if(s.phase==='rest') return s.phaseRemaining>0? (store.roundAssigns[Math.max(0,s.roundIndex)]?.postType==='rest' ? (store.roundAssigns[Math.max(0,s.roundIndex)].postDuration || c.rest) : c.rest) : c.rest; if(s.phase==='switch') return s.phaseRemaining>0? (store.roundAssigns[Math.max(0,s.roundIndex)]?.postType==='switch' ? (store.roundAssigns[Math.max(0,s.roundIndex)].postDuration || c.switchDuration) : c.switchDuration) : c.switchDuration; if(s.phase==='end') return c.end; return 1; })();
+  const rem = Math.max(0, s.phaseRemaining || 0); const pct = total>0 ? (rem/total) : 0; const circumference = 2*Math.PI*40; const dash = (circumference * pct).toFixed(2); els.prog.setAttribute('stroke-dasharray', `${dash} ${circumference}`);
 
-  // meta chips (exercise name / strikes)
-  updateMetaChips();
-
-  // next block  
-  const nextText = computeNextText(s);
-  els.nextBlock.textContent = nextText;
-
-  // enable/disable buttons
+  const rounds = c.rounds || 0; const rIndex = s.roundIndex || 0; els.roundInfo.textContent = s.phase==='idle' ? `Round 0 / ${rounds}` : `Round ${Math.min(rIndex+1, rounds)} / ${rounds}`;
+  updateMetaChips(); const nextText = computeNextText(s); els.nextBlock.textContent = nextText;
   els.startBtn.disabled = s.running; els.pauseBtn.disabled = !s.running;
 }
 
-function updateMetaChips(){ const s = timer.getState(); els.metaChips.innerHTML=''; if(s.phase==='round'){ const ex = store.exercises[s.roundIndex ? s.roundIndex : 0]; const exName = ex?.name || '—'; const chip1 = document.createElement('div'); chip1.className='chip'; chip1.textContent = `Exercício: ${exName}`; els.metaChips.appendChild(chip1); const chip2 = document.createElement('div'); chip2.className='chip'; chip2.textContent = `Golpes: ${ (ex && ex.strikes && ex.strikes.length) ? ex.strikes.join(', ') : '—' }`; els.metaChips.appendChild(chip2); } else { const chip = document.createElement('div'); chip.className='chip'; chip.textContent = (store.cfg.name || 'Treino') ; els.metaChips.appendChild(chip); } }
+function updateMetaChips(){ const s = timer.getState(); els.metaChips.innerHTML=''; if(s.phase==='round'){ const ex = store.exercises[s.roundIndex]||{}; const exName = ex.name || '—'; const chip1 = document.createElement('div'); chip1.className='chip'; chip1.textContent = `Exercício: ${exName}`; els.metaChips.appendChild(chip1); const chip2 = document.createElement('div'); chip2.className='chip'; chip2.textContent = `Golpes: ${ (ex && ex.strikes && ex.strikes.length) ? ex.strikes.join(', ') : '—' }`; els.metaChips.appendChild(chip2); } else { const chip = document.createElement('div'); chip.className='chip'; chip.textContent = (store.cfg.name || 'Treino') ; els.metaChips.appendChild(chip); } }
 
-function computeNextText(s){ const c=store.cfg; if(s.phase==='idle') return 'Pronto para iniciar'; if(s.phase==='warmup') return `Round 1 — ${store.exercises[0]?.name||'—'}`; if(s.phase==='round'){ // next could be rest, switch, end
-    if(s.roundIndex >= c.rounds-1) return 'Encerramento'; if(c.switchEvery>0 && ((s.roundIndex+1)%c.switchEvery===0)) return `Troca → ${store.exercises[(s.roundIndex+1)%store.exercises.length]?.name||'—'}`; return `Descanso → Round ${s.roundIndex+2}`; }
+function computeNextText(s){ const c=store.cfg; if(s.phase==='idle') return 'Pronto para iniciar'; if(s.phase==='warmup') return `Round 1 — ${store.exercises[0]?.name||'—'}`; if(s.phase==='round'){ if(s.roundIndex >= c.rounds-1) return 'Encerramento'; const post = store.roundAssigns[s.roundIndex]?.postType || 'default'; if(post==='default'){ if(c.switchEvery>0 && ((s.roundIndex+1)%c.switchEvery===0)) return `Troca → ${store.exercises[(s.roundIndex+1)%store.exercises.length]?.name||'—'}`; return `Descanso → Round ${s.roundIndex+2}`; } if(post==='rest') return `Descanso → Round ${s.roundIndex+2}`; if(post==='switch') return `Troca → ${store.exercises[(s.roundIndex+1)%store.exercises.length]?.name||'—'}`; if(post==='none') return `Round ${s.roundIndex+2}`; }
   if(s.phase==='rest') return `Round ${s.roundIndex+2} — ${store.exercises[(s.roundIndex+1)%store.exercises.length]?.name||'—'}`; if(s.phase==='switch') return `Round ${s.roundIndex+2} — ${store.exercises[(s.roundIndex+1)%store.exercises.length]?.name||'—'}`; if(s.phase==='end') return 'Fim do treino'; return '—'; }
 
-// listen for config input changes
 function onCfgChange(){ store.cfg.warmup = Math.max(0, +els.cfgWarmup.value||0); store.cfg.rounds = Math.max(1, +els.cfgRounds.value||1); store.cfg.roundDuration = Math.max(1, +els.cfgRoundDuration.value||1); store.cfg.rest = Math.max(0, +els.cfgRest.value||0); store.cfg.switchEvery = Math.max(0, +els.cfgSwitchEvery.value||0); store.cfg.switchDuration = Math.max(0, +els.cfgSwitchDuration.value||0); store.cfg.end = Math.max(0, +els.cfgEnd.value||0); store.cfg.name = els.cfgName.value||'MMA House'; ensureRoundAssigns(); save(); renderRoundAssigns(); renderQuickRounds(); updateTotalUI(); }
 
 // init
-load(); // populate inputs
-els.cfgWarmup.value = store.cfg.warmup; els.cfgRounds.value = store.cfg.rounds; els.cfgRoundDuration.value = store.cfg.roundDuration; els.cfgRest.value = store.cfg.rest; els.cfgSwitchEvery.value = store.cfg.switchEvery; els.cfgSwitchDuration.value = store.cfg.switchDuration; els.cfgEnd.value = store.cfg.end; els.cfgName.value = store.cfg.name;
+load(); els.cfgWarmup.value = store.cfg.warmup; els.cfgRounds.value = store.cfg.rounds; els.cfgRoundDuration.value = store.cfg.roundDuration; els.cfgRest.value = store.cfg.rest; document.getElementById('cfg-switch-every').value = store.cfg.switchEvery; document.getElementById('cfg-switch-duration').value = store.cfg.switchDuration; els.cfgEnd.value = store.cfg.end; els.cfgName.value = store.cfg.name;
 
 renderStrikes(); renderExercises(); renderRoundAssigns(); renderQuickRounds(); updateTotalUI(); bind(); timer.initFromStore(); updateUI();
 
-// small autosave interval for runtime user changes
 setInterval(()=>{ save(); }, 2000);
 
-// keyboard shortcuts
-document.addEventListener('keydown', (e)=>{
-  if(e.code==='Space'){ e.preventDefault(); const s = timer.getState(); if(s.running) timer.pause(); else timer.start(); }
-  if(e.key==='ArrowRight') timer.next(); if(e.key==='ArrowLeft') timer.prev();
-});
+document.addEventListener('keydown', (e)=>{ if(e.code==='Space'){ e.preventDefault(); const s = timer.getState(); if(s.running) timer.pause(); else timer.start(); } if(e.key==='ArrowRight') timer.next(); if(e.key==='ArrowLeft') timer.prev(); });
 </script>
 </body>
 </html>
