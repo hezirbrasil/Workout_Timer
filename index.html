@@ -28,6 +28,11 @@
   .small{font-size:13px;padding:6px 8px}
   .meta{margin-top:12px;color:var(--muted);font-size:13px}
 
+  /* progress ring */
+  .ring{width:220px;height:220px;display:flex;align-items:center;justify-content:center;position:relative;margin-bottom:12px}
+  .ring svg{transform:rotate(-90deg)}
+  .ring .center{position:absolute;display:flex;flex-direction:column;align-items:center}
+
   @media(max-width:880px){.wrap{grid-template-columns:1fr;padding:12px}.timer{padding:18px}.time{font-size:44px}}
 </style>
 </head>
@@ -68,8 +73,22 @@
     </div>
 
     <div class="panel timer">
-      <div class="phase" id="phaseName">Pronto</div>
-      <div class="time" id="timeLeft">00:00</div>
+      <div class="ring">
+        <svg width="220" height="220" viewBox="0 0 100 100">
+          <defs>
+            <linearGradient id="grad" x1="0" x2="1">
+              <stop offset="0" stop-color="#9b59ff" />
+              <stop offset="1" stop-color="#8a2be2" />
+            </linearGradient>
+          </defs>
+          <circle cx="50" cy="50" r="40" stroke="rgba(255,255,255,0.06)" stroke-width="6" fill="none" />
+          <circle id="prog" cx="50" cy="50" r="40" stroke="url(#grad)" stroke-width="6" stroke-linecap="round" stroke-dasharray="0 251.2" fill="none"></circle>
+        </svg>
+        <div class="center">
+          <div class="phase" id="phaseName">Pronto</div>
+          <div class="time" id="timeLeft">00:00</div>
+        </div>
+      </div>
 
       <div class="controls">
         <button id="prev" class="btn">◀</button>
@@ -91,17 +110,15 @@ function save(){localStorage.setItem(LS,JSON.stringify(store)); updateUI();}
 
 const els={warmup:1,rest:1,end:1,rounds:1,newName:1,newDur:1};
 els.warmup = document.getElementById('warmup'); els.rest = document.getElementById('rest'); els.end = document.getElementById('end'); els.rounds = document.getElementById('rounds'); els.newName = document.getElementById('newName'); els.newDur = document.getElementById('newDur');
-const startBtn=document.getElementById('start'); const pauseBtn=document.getElementById('pause'); const resetBtn=document.getElementById('reset'); const prevBtn=document.getElementById('prev'); const nextBtn=document.getElementById('next'); const timeLeftEl=document.getElementById('timeLeft'); const phaseNameEl=document.getElementById('phaseName'); const infoEl=document.getElementById('info');
+const startBtn=document.getElementById('start'); const pauseBtn=document.getElementById('pause'); const resetBtn=document.getElementById('reset'); const prevBtn=document.getElementById('prev'); const nextBtn=document.getElementById('next'); const timeLeftEl=document.getElementById('timeLeft'); const phaseNameEl=document.getElementById('phaseName'); const infoEl=document.getElementById('info'); const progEl = document.getElementById('prog');
 
 function renderRounds(){els.rounds.innerHTML=''; store.rounds.forEach((r,i)=>{
   const div=document.createElement('div'); div.className='round';
   div.innerHTML = `<div class="name"><input data-i="${i}" class="rname" value="${escapeHtml(r.name)}" style="background:transparent;border:0;color:var(--fg)"></div><input data-i="${i}" class="rdur" type="number" value="${r.dur}" min="1"><button data-i="${i}" class="btn small del">✖</button>`;
   els.rounds.appendChild(div);
 });}
-
 function escapeHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 
-// events
 els.warmup.addEventListener('input',()=>{store.warmup=Math.max(0,parseInt(els.warmup.value)||0); save();});
 els.rest.addEventListener('input',()=>{store.rest=Math.max(0,parseInt(els.rest.value)||0); save();});
 els.end.addEventListener('input',()=>{store.end=Math.max(0,parseInt(els.end.value)||0); save();});
@@ -115,22 +132,29 @@ document.getElementById('applyAllRest').addEventListener('click',()=>{ if(!confi
 
 document.getElementById('clearAll').addEventListener('click',()=>{ if(!confirm('Limpar tudo e restaurar padrão?')) return; store = {warmup:30,rest:60,end:60,rounds:[{name:'Round 1',dur:60},{name:'Round 2',dur:60}]}; save(); renderRounds(); });
 
+// audio
+function playTone(freq,duration,ctx){ try{ ctx = ctx || new (window.AudioContext || window.webkitAudioContext)(); const o = ctx.createOscillator(); const g = ctx.createGain(); o.type='sine'; o.frequency.value = freq; o.connect(g); g.connect(ctx.destination); g.gain.setValueAtTime(0.0001, ctx.currentTime); g.gain.exponentialRampToValueAtTime(0.15, ctx.currentTime + 0.01); o.start(); g.gain.exponentialRampToValueAtTime(0.00001, ctx.currentTime + duration); o.stop(ctx.currentTime + duration + 0.02); }catch(e){/* ignore */} }
+function playBeep(kind){ if(kind==='start') playTone(880,0.25); else if(kind==='next') { playTone(1200,0.18); setTimeout(()=>playTone(800,0.12),120); } else playTone(640,0.18); }
+
 // timer engine
 let seq = []; let idx=0; let phase='idle'; let remaining=0; let running=false; let raf=0; let last=0;
 function buildSeq(){ seq=[]; if(store.warmup>0) seq.push({type:'Aquecimento',dur:store.warmup}); store.rounds.forEach((r,i)=>{ seq.push({type:r.name,dur:r.dur}); if(i<store.rounds.length-1) seq.push({type:'Descanso',dur: (r.postRest!==undefined? r.postRest : store.rest)}); }); seq.push({type:'Encerramento',dur:store.end}); }
-function start(){ if(running) return; if(seq.length===0) buildSeq(); if(phase==='idle'){ idx=0; remaining = seq[0].dur; phase=seq[0].type;} running=true; last=performance.now(); tick();}
+function start(){ if(running) return; if(seq.length===0) buildSeq(); if(phase==='idle'){ idx=0; remaining = seq[0].dur; phase=seq[0].type; playBeep('start'); } running=true; last=performance.now(); tick();}
 function pause(){ running=false; if(raf) cancelAnimationFrame(raf); raf=0;}
 function reset(){ pause(); buildSeq(); idx=0; phase='idle'; remaining=0; updateDisplay();}
 function next(){ if(seq.length===0) buildSeq(); remaining=0; }
-function prev(){ if(seq.length===0) buildSeq(); idx = Math.max(0, idx-1); remaining = seq[idx]?.dur || 0; phase = seq[idx]?.type || 'idle'; updateDisplay(); }
+function prev(){ if(seq.length===0) buildSeq(); idx = Math.max(0, idx-1); remaining = seq[idx]?.dur || 0; phase = seq[idx]?.type || 'idle'; playBeep('next'); updateDisplay(); }
 
-function tick(ts){ if(!running) return; const dt=(ts-last)/1000; last=ts; remaining -= dt; if(remaining<=0){ idx++; if(idx>=seq.length){ running=false; phase='Pronto'; remaining=0; updateDisplay(); return;} phase = seq[idx].type; remaining = seq[idx].dur; }
+function tick(ts){ if(!running) return; const dt=(ts-last)/1000; last=ts; remaining -= dt; if(remaining<=0){ idx++; if(idx>=seq.length){ running=false; phase='Pronto'; remaining=0; updateDisplay(); playBeep('end'); return;} phase = seq[idx].type; remaining = seq[idx].dur; playBeep('next'); }
  updateDisplay(); raf = requestAnimationFrame(tick);} 
 
 function formatTime(s){ s=Math.max(0,Math.round(s)); const m=Math.floor(s/60); const ss=s%60; return `${String(m).padStart(2,'0')}:${String(ss).padStart(2,'0')}` }
 
 function updateDisplay(){ if(phase==='idle' && seq.length>0){ phase = seq[idx]?.type || 'Pronto'; remaining = seq[idx]?.dur || 0; }
- phaseNameEl.textContent = phase || 'Pronto'; timeLeftEl.textContent = formatTime(remaining); infoEl.textContent = `Bloco ${idx+1} / ${seq.length} • Total: ${formatTime(totalDuration())}`; }
+ phaseNameEl.textContent = phase || 'Pronto'; timeLeftEl.textContent = formatTime(remaining); infoEl.textContent = `Bloco ${idx+1} / ${seq.length} • Total: ${formatTime(totalDuration())}`;
+ // progress ring update
+ const totalForPhase = (seq[idx] && seq[idx].dur) ? seq[idx].dur : 1; const pct = totalForPhase>0 ? (Math.max(0,remaining)/totalForPhase) : 0; const circumference = 2*Math.PI*40; const dash = (circumference * pct).toFixed(2); progEl.setAttribute('stroke-dasharray', `${dash} ${circumference}`);
+}
 
 function totalDuration(){ buildSeq(); return seq.reduce((a,b)=>a+(b.dur||0),0); }
 
