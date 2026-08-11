@@ -43,32 +43,23 @@
   <div class="wrap">
     <div class="panel">
       <h1>Cronômetro — Simples</h1>
-      <div>
-        <label>Aquecimento (segundos)</label>
-        <input id="warmup" type="number" min="0" value="30">
-      </div>
-      <div style="margin-top:10px;display:flex;gap:8px;align-items:center">
-        <div style="flex:1">
-          <label>Duração de descanso padrão (seg)</label>
-          <input id="rest" type="number" min="0" value="60">
-        </div>
-        <div style="width:120px">
-          <label>Encerramento (seg)</label>
-          <input id="end" type="number" min="0" value="60">
-        </div>
-      </div>
+      <!-- Removed warmup/rest/end: user will configure all blocks manually -->
+      <div style="margin-top:6px;color:var(--muted);font-size:13px">Configure todos os blocos manualmente abaixo.</div>
 
       <hr style="opacity:0.06;margin:12px 0">
       <div style="display:flex;gap:8px;align-items:center">
         <input id="newName" type="text" placeholder="Nome do round (ex: Circuito)" style="flex:1;padding:8px;border-radius:8px;border:1px solid #111;background:#050505;color:var(--fg)">
-        <input id="newDur" type="number" value="60" min="1" style="width:90px">
+        <input id="newDur" type="number" value="60" min="1" style="width:70px">
+        <select id="newUnit" style="width:70px;padding:8px;border-radius:8px;background:#050505;border:1px solid #111;color:var(--fg)">
+          <option value="s">seg</option>
+          <option value="m">min</option>
+        </select>
         <button id="addRound" type="button" class="btn primary">Adicionar</button>
       </div>
 
       <div><label style="font-weight:600;margin-bottom:6px;display:block;color:var(--muted)">Blocos adicionados</label><div class="list" id="rounds"></div></div>
 
       <div style="display:flex;gap:8px;margin-top:8px">
-        <button id="applyAllRest" type="button" class="btn small">Aplicar descanso a todos</button>
         <button id="clearAll" type="button" class="btn small">Limpar</button>
       </div>
 
@@ -118,7 +109,9 @@ const startBtn=document.getElementById('start'); const pauseBtn=document.getElem
 function renderRounds(){els.rounds.innerHTML=''; store.rounds.forEach((r,i)=>{
   const div=document.createElement('div'); div.className='round'; div.setAttribute('draggable','true'); div.dataset.index = i;
   const disabledAttr = (typeof running !== 'undefined' && running) ? 'disabled' : '';
-  div.innerHTML = `<div class="name"><input data-i="${i}" class="rname" value="${escapeHtml(r.name)}" style="background:transparent;border:0;color:var(--fg)"></div><input data-i="${i}" class="rdur" type="number" value="${r.dur}" min="1"><div style="display:flex;gap:6px"><button data-i="${i}" class="btn small move-up" ${disabledAttr}>▲</button><button data-i="${i}" class="btn small move-down" ${disabledAttr}>▼</button><button data-i="${i}" class="btn small del" ${disabledAttr}>✖</button></div>`;
+  // determine unit and display value
+  const currentSeconds = r.dur || 0; const useMin = currentSeconds % 60 === 0 && currentSeconds !== 0; const displayVal = useMin ? (currentSeconds/60) : currentSeconds; const unitSel = useMin ? 'm' : 's';
+  div.innerHTML = `<div class="name"><input data-i="${i}" class="rname" value="${escapeHtml(r.name)}" style="background:transparent;border:0;color:var(--fg)"></div><input data-i="${i}" class="rdur" type="number" value="${displayVal}" min="1" step="1"><select data-i="${i}" class="runit" style="width:70px;padding:6px;border-radius:6px;background:#050505;border:1px solid #111;color:var(--fg)"><option value="s" ${unitSel==='s'?'selected':''}>seg</option><option value="m" ${unitSel==='m'?'selected':''}>min</option></select><div style="display:flex;gap:6px"><button data-i="${i}" class="btn small move-up" ${disabledAttr}>▲</button><button data-i="${i}" class="btn small move-down" ${disabledAttr}>▼</button><button data-i="${i}" class="btn small del" ${disabledAttr}>✖</button></div>`;
 
   // drag handlers
   div.addEventListener('dragstart', (e)=>{
@@ -135,20 +128,21 @@ function renderRounds(){els.rounds.innerHTML=''; store.rounds.forEach((r,i)=>{
 });}
 function escapeHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 
-els.warmup.addEventListener('input',()=>{store.warmup=Math.max(0,parseInt(els.warmup.value)||0); save();});
-els.rest.addEventListener('input',()=>{store.rest=Math.max(0,parseInt(els.rest.value)||0); save();});
-els.end.addEventListener('input',()=>{store.end=Math.max(0,parseInt(els.end.value)||0); save();});
 
 // addRound handler (exposed globally as fallback for pages)
 function addRoundHandler(){
   try{
     const n = (els.newName.value || '').trim() || (`Round ${store.rounds.length+1}`);
-    const d = Math.max(1, parseInt(els.newDur.value) || 60);
+    const raw = parseFloat(els.newDur.value) || 0;
+    const unitEl = document.getElementById('newUnit');
+    const unit = unitEl ? unitEl.value : 's';
+    const d = Math.max(1, Math.round(raw * (unit === 'm' ? 60 : 1)));
     store.rounds.push({name: n, dur: d});
     save(); renderRounds();
     // clear inputs for convenience
     els.newName.value = '';
-    els.newDur.value = d;
+    els.newDur.value = 60;
+    if(unitEl) unitEl.value = 's';
     console.log('addRoundHandler: added', n, d);
   }catch(e){ console.error('addRoundHandler error', e); alert('Erro ao adicionar bloco: '+e.message); }
 }
@@ -156,7 +150,11 @@ function addRoundHandler(){
 const _btnAdd = document.getElementById('addRound'); if(_btnAdd){ _btnAdd.addEventListener('click', addRoundHandler); _btnAdd.setAttribute('onclick','addRoundHandler()'); }
 
 
-els.rounds.addEventListener('input',e=>{const t=e.target; const i=Number(t.dataset.i); if(t.classList.contains('rname')){store.rounds[i].name = t.value; save();} if(t.classList.contains('rdur')){store.rounds[i].dur = Math.max(1,parseInt(t.value)||1); save();}});
+els.rounds.addEventListener('input', e => { const t = e.target; const i = Number(t.dataset.i); if(isNaN(i)) return; if(t.classList.contains('rname')){ store.rounds[i].name = t.value; save(); } if(t.classList.contains('rdur')){ // numeric input changed
+    const val = parseFloat(t.value) || 0; const unitSel = document.querySelector(`select.runit[data-i='${i}']`); const unit = unitSel ? unitSel.value : 's'; store.rounds[i].dur = Math.max(1, Math.round(val * (unit==='m'?60:1))); save(); }
+  if(t.classList.contains('runit')){ // unit changed
+    const valInput = document.querySelector(`input.rdur[data-i='${i}']`); const val = parseFloat(valInput.value) || 0; const unit = t.value; store.rounds[i].dur = Math.max(1, Math.round(val * (unit==='m'?60:1))); save(); }
+});
 els.rounds.addEventListener('click', e => {
   const b = e.target.closest('button'); if(!b) return; const i = Number(b.dataset.i);
   if(b.classList.contains('del')){
@@ -183,7 +181,8 @@ function playBeep(kind){ if(kind==='start') playTone(880,0.25); else if(kind==='
 
 // timer engine
 let seq = []; let idx=0; let phase='idle'; let remaining=0; let running=false; let raf=0; let last=0;
-function buildSeq(){ seq=[]; if(store.warmup>0) seq.push({type:'Aquecimento',dur:store.warmup}); store.rounds.forEach((r,i)=>{ seq.push({type:r.name,dur:r.dur}); if(i<store.rounds.length-1) seq.push({type:'Descanso',dur: (r.postRest!==undefined? r.postRest : store.rest)}); }); seq.push({type:'Encerramento',dur:store.end}); }
+function buildSeq(){ seq = []; // use exactly the configured blocks in order
+  store.rounds.forEach((r)=>{ seq.push({type: r.name || 'Bloco', dur: r.dur || 0}); }); }
 function start(){ if(running) return; if(seq.length===0) buildSeq(); if(phase==='idle'){ idx=0; remaining = seq[0].dur; phase=seq[0].type; playBeep('start'); } running=true; last=performance.now(); tick();}
 function pause(){ running=false; if(raf) cancelAnimationFrame(raf); raf=0;}
 function reset(){ pause(); buildSeq(); idx=0; phase='idle'; remaining=0; updateDisplay();}
