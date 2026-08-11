@@ -175,7 +175,7 @@ els.rounds.addEventListener('click', e => {
 
 const applyAllRestBtn = document.getElementById('applyAllRest'); if(applyAllRestBtn){ applyAllRestBtn.addEventListener('click', ()=>{ if(!confirm('Aplicar descanso padrão para todos os rounds?')) return; store.rounds.forEach(r=>r.postRest = store.rest); save(); alert('Aplicado'); }); }
 
-document.getElementById('clearAll').addEventListener('click',()=>{ if(!confirm('Limpar tudo e restaurar padrão?')) return; store = {warmup:30,rest:60,end:60,rounds:[{name:'Round 1',dur:60},{name:'Round 2',dur:60}]}; save(); renderRounds(); });
+const clearAllBtn = document.getElementById('clearAll'); if(clearAllBtn){ clearAllBtn.addEventListener('click',()=>{ if(!confirm('Limpar tudo e restaurar padrão?')) return; store = {warmup:30,rest:60,end:60,rounds:[{name:'Round 1',dur:60},{name:'Round 2',dur:60}]}; save(); renderRounds(); }); }
 
 // audio
 function playTone(freq,duration,ctx){ try{ ctx = ctx || new (window.AudioContext || window.webkitAudioContext)(); const o = ctx.createOscillator(); const g = ctx.createGain(); o.type='sine'; o.frequency.value = freq; o.connect(g); g.connect(ctx.destination); g.gain.setValueAtTime(0.0001, ctx.currentTime); g.gain.exponentialRampToValueAtTime(0.15, ctx.currentTime + 0.01); o.start(); g.gain.exponentialRampToValueAtTime(0.00001, ctx.currentTime + duration); o.stop(ctx.currentTime + duration + 0.02); }catch(e){/* ignore */} }
@@ -207,7 +207,7 @@ function updateUI(){ try{ renderRounds(); buildSeq(); updateDisplay(); }catch(e)
 
 function totalDuration(){ buildSeq(); return seq.reduce((a,b)=>a+(b.dur||0),0); }
 
-startBtn.addEventListener('click',start); pauseBtn.addEventListener('click',pause); resetBtn.addEventListener('click',reset); prevBtn.addEventListener('click',prev); nextBtn.addEventListener('click',next);
+if(startBtn) startBtn.addEventListener('click',start); if(pauseBtn) pauseBtn.addEventListener('click',pause); if(resetBtn) resetBtn.addEventListener('click',reset); if(prevBtn) prevBtn.addEventListener('click',prev); if(nextBtn) nextBtn.addEventListener('click',next);
 
 // init
 load(); renderRounds(); buildSeq(); updateDisplay();
