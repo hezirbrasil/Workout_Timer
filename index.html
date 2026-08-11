@@ -34,6 +34,9 @@
   .ring .center{position:absolute;display:flex;flex-direction:column;align-items:center}
 
   @media(max-width:880px){.wrap{grid-template-columns:1fr;padding:12px}.timer{padding:18px}.time{font-size:44px}}
+  .round.dragging{opacity:0.6;transform:scale(0.995)}
+  .round.drag-over-top{outline:2px dashed var(--accent);outline-offset:-6px}
+  .round.drag-over-bottom{outline:2px dashed var(--accent);outline-offset:-6px}
 </style>
 </head>
 <body>
@@ -113,9 +116,21 @@ els.warmup = document.getElementById('warmup'); els.rest = document.getElementBy
 const startBtn=document.getElementById('start'); const pauseBtn=document.getElementById('pause'); const resetBtn=document.getElementById('reset'); const prevBtn=document.getElementById('prev'); const nextBtn=document.getElementById('next'); const timeLeftEl=document.getElementById('timeLeft'); const phaseNameEl=document.getElementById('phaseName'); const infoEl=document.getElementById('info'); const progEl = document.getElementById('prog');
 
 function renderRounds(){els.rounds.innerHTML=''; store.rounds.forEach((r,i)=>{
-  const div=document.createElement('div'); div.className='round';
+  const div=document.createElement('div'); div.className='round'; div.setAttribute('draggable','true'); div.dataset.index = i;
   const disabledAttr = (typeof running !== 'undefined' && running) ? 'disabled' : '';
   div.innerHTML = `<div class="name"><input data-i="${i}" class="rname" value="${escapeHtml(r.name)}" style="background:transparent;border:0;color:var(--fg)"></div><input data-i="${i}" class="rdur" type="number" value="${r.dur}" min="1"><div style="display:flex;gap:6px"><button data-i="${i}" class="btn small move-up" ${disabledAttr}>▲</button><button data-i="${i}" class="btn small move-down" ${disabledAttr}>▼</button><button data-i="${i}" class="btn small del" ${disabledAttr}>✖</button></div>`;
+
+  // drag handlers
+  div.addEventListener('dragstart', (e)=>{
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', i);
+    div.classList.add('dragging');
+  });
+  div.addEventListener('dragend', ()=>{ div.classList.remove('dragging'); const items = els.rounds.querySelectorAll('.round'); items.forEach(it=>it.classList.remove('drag-over-top','drag-over-bottom')); renderRounds(); });
+  div.addEventListener('dragover', (e)=>{ e.preventDefault(); const dragging = els.rounds.querySelector('.dragging'); if(!dragging) return; const rect = div.getBoundingClientRect(); const mid = rect.top + rect.height/2; if(e.clientY < mid){ div.classList.add('drag-over-top'); div.classList.remove('drag-over-bottom'); } else { div.classList.add('drag-over-bottom'); div.classList.remove('drag-over-top'); } });
+  div.addEventListener('dragleave', ()=>{ div.classList.remove('drag-over-top','drag-over-bottom'); });
+  div.addEventListener('drop', (e)=>{ e.preventDefault(); const from = Number(e.dataTransfer.getData('text/plain')); const to = Number(div.dataset.index); if(isNaN(from) || isNaN(to)) return; const rect = div.getBoundingClientRect(); const mid = rect.top + rect.height/2; let insertAt = to; if(e.clientY > mid) insertAt = to + 1; const item = store.rounds.splice(from,1)[0]; if(from < insertAt) insertAt--; store.rounds.splice(insertAt,0,item); save(); renderRounds(); });
+
   els.rounds.appendChild(div);
 });}
 function escapeHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
