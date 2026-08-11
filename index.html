@@ -238,6 +238,8 @@
     <h1>Cronômetro de Treino</h1>
   </div>
 
+  <div id="customModeBadge" style="margin:0 0 12px; padding:8px 12px; border-radius:999px; background:rgba(147,51,234,0.18); border:1px solid rgba(192,132,252,0.35); color:var(--purple-bright); font-size:12px; font-weight:800; letter-spacing:0.08em; text-transform:uppercase;">Modo personalizado ativo</div>
+
   <!-- ============ TELA DE CONFIGURAÇÕES ============ -->
   <div class="card" id="configView">
     <h2>Configure a aula</h2>
@@ -345,6 +347,14 @@
 
 <script>
 (function(){
+  const customBadge = document.getElementById('customModeBadge');
+  if (customBadge) customBadge.textContent = 'Modo personalizado ativo';
+
+  const visibleDebug = document.createElement('div');
+  visibleDebug.textContent = 'Personalização carregada';
+  visibleDebug.style.cssText = 'position:fixed;left:12px;bottom:12px;z-index:9999;display:inline-block;padding:8px 10px;border-radius:10px;background:rgba(147,51,234,0.2);border:1px solid rgba(192,132,252,0.35);color:var(--purple-bright);font-weight:800;font-size:12px;';
+  document.body.appendChild(visibleDebug);
+
   // ---------- Elementos: Configuração ----------
   const configView = document.getElementById('configView');
   const timerView = document.getElementById('timerView');
