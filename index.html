@@ -347,19 +347,54 @@
 
 <script>
 (function(){
-  const customBadge = document.getElementById('customModeBadge');
-  if (customBadge) customBadge.textContent = 'Modo personalizado ativo';
+  const STORAGE = {
+    golpes: 'workout_golpes_v2',
+    exercises: 'workout_exercises_v2',
+    assignments: 'workout_round_assignments_v2',
+    durations: 'workout_round_durations_v2'
+  };
 
-  const visibleDebug = document.createElement('div');
-  visibleDebug.textContent = 'Personalização carregada';
-  visibleDebug.style.cssText = 'position:fixed;left:12px;bottom:12px;z-index:9999;display:inline-block;padding:8px 10px;border-radius:10px;background:rgba(147,51,234,0.2);border:1px solid rgba(192,132,252,0.35);color:var(--purple-bright);font-weight:800;font-size:12px;';
-  document.body.appendChild(visibleDebug);
+  function readJSON(key, fallback){
+    try {
+      const raw = localStorage.getItem(key);
+      return raw ? JSON.parse(raw) : fallback;
+    } catch (err) {
+      return fallback;
+    }
+  }
 
-  // ---------- Elementos: Configuração ----------
+  function writeJSON(key, value){
+    localStorage.setItem(key, JSON.stringify(value));
+  }
+
+  function ensureSeedData(){
+    if (!readJSON(STORAGE.golpes, null)) {
+      writeJSON(STORAGE.golpes, [
+        { id: 'g1', name: 'Jab' },
+        { id: 'g2', name: 'Direto' },
+        { id: 'g3', name: 'Gancho' },
+        { id: 'g4', name: 'Uppercut' }
+      ]);
+    }
+
+    if (!readJSON(STORAGE.exercises, null)) {
+      writeJSON(STORAGE.exercises, [
+        { id: 'e1', name: 'Combinação 1', golpes: ['g1', 'g2'] },
+        { id: 'e2', name: 'Padrão 2', golpes: ['g3', 'g4'] }
+      ]);
+    }
+  }
+
+  ensureSeedData();
+
   const configView = document.getElementById('configView');
   const timerView = document.getElementById('timerView');
   const seqTitleWrap = document.getElementById('seqTitleWrap');
   const footerNote = document.getElementById('footerNote');
+  const totalTimeVal = document.getElementById('totalTimeVal');
+  const breakdownVal = document.getElementById('breakdownVal');
+  const startClassBtn = document.getElementById('startClassBtn');
+  const editConfigBtn = document.getElementById('editConfigBtn');
 
   const cfg = {
     warmupMin: document.getElementById('cfgWarmupMin'),
@@ -373,94 +408,416 @@
     trocaMin: document.getElementById('cfgTrocaMin'),
     trocaSec: document.getElementById('cfgTrocaSec'),
     endMin: document.getElementById('cfgEndMin'),
-    endSec: document.getElementById('cfgEndSec'),
+    endSec: document.getElementById('cfgEndSec')
   };
-  const totalTimeVal = document.getElementById('totalTimeVal');
-  const breakdownVal = document.getElementById('breakdownVal');
-  const startClassBtn = document.getElementById('startClassBtn');
-  const editConfigBtn = document.getElementById('editConfigBtn');
 
-  function toSec(minEl, secEl){
-    const m = Math.max(0, parseInt(minEl.value, 10) || 0);
-    const s = Math.max(0, Math.min(59, parseInt(secEl.value, 10) || 0));
-    return m * 60 + s;
+  function toSeconds(minEl, secEl){
+    const minutes = Math.max(0, parseInt(minEl.value, 10) || 0);
+    const seconds = Math.max(0, Math.min(59, parseInt(secEl.value, 10) || 0));
+    return minutes * 60 + seconds;
   }
 
-  function fmtLong(totalSeconds){
-    const h = Math.floor(totalSeconds / 3600);
-    const m = Math.floor((totalSeconds % 3600) / 60);
-    const s = totalSeconds % 60;
-    let parts = [];
-    if (h > 0) parts.push(h + 'h');
-    parts.push(String(m).padStart(h > 0 ? 2 : 1, '0') + 'min');
-    if (s > 0) parts.push(String(s).padStart(2,'0') + 's');
+  function formatLong(totalSeconds){
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+    const parts = [];
+    if (hours > 0) parts.push(String(hours) + 'h');
+    parts.push(String(minutes).padStart(hours > 0 ? 2 : 1, '0') + 'min');
+    if (seconds > 0) parts.push(String(seconds).padStart(2, '0') + 's');
     return parts.join(' ');
   }
 
   function readConfig(){
-    const warmup = toSec(cfg.warmupMin, cfg.warmupSec);
-    const rounds = Math.max(1, parseInt(cfg.rounds.value, 10) || 1);
-    const trocaEvery = Math.max(0, parseInt(cfg.trocaEvery.value, 10) || 0);
-    const roundDur = toSec(cfg.roundMin, cfg.roundSec);
-    const restDur = toSec(cfg.restMin, cfg.restSec);
-    const trocaDur = toSec(cfg.trocaMin, cfg.trocaSec);
-    const endDur = toSec(cfg.endMin, cfg.endSec);
-    return { warmup, rounds, trocaEvery, roundDur, restDur, trocaDur, endDur };
+    return {
+      warmup: toSeconds(cfg.warmupMin, cfg.warmupSec),
+      rounds: Math.max(1, parseInt(cfg.rounds.value, 10) || 1),
+      trocaEvery: Math.max(0, parseInt(cfg.trocaEvery.value, 10) || 0),
+      roundDur: toSeconds(cfg.roundMin, cfg.roundSec),
+      restDur: toSeconds(cfg.restMin, cfg.restSec),
+      trocaDur: toSeconds(cfg.trocaMin, cfg.trocaSec),
+      endDur: toSeconds(cfg.endMin, cfg.endSec)
+    };
   }
 
   function buildSequence(c){
     const seq = [];
-    if (c.warmup > 0) seq.push({ type:'warmup', label:'Aquecimento', duration: c.warmup, round: null });
+    const roundMap = readJSON(STORAGE.durations, {});
+    const assignments = readJSON(STORAGE.assignments, {});
 
-    for (let r = 1; r <= c.rounds; r++){
-      seq.push({ type:'round', label:'Round ' + r, duration: c.roundDur, round: r });
-      if (r === c.rounds) continue;
+    if (c.warmup > 0) {
+      seq.push({ type: 'warmup', label: 'Aquecimento', duration: c.warmup, round: null, exerciseId: null });
+    }
 
-      const isTroca = c.trocaEvery > 0 && (r % c.trocaEvery === 0);
-      if (isTroca){
-        if (c.trocaDur > 0) seq.push({ type:'troca', label:'Troca', duration: c.trocaDur, round: r });
+    for (let round = 1; round <= c.rounds; round++) {
+      const roundKey = 'r' + round;
+      const roundDuration = (typeof roundMap[roundKey] === 'number' && roundMap[roundKey] > 0)
+        ? roundMap[roundKey]
+        : c.roundDur;
+
+      seq.push({
+        type: 'round',
+        label: 'Round ' + round,
+        duration: roundDuration,
+        round,
+        exerciseId: assignments[roundKey] || null
+      });
+
+      if (round === c.rounds) continue;
+
+      const isTroca = c.trocaEvery > 0 && (round % c.trocaEvery === 0);
+      if (isTroca) {
+        if (c.trocaDur > 0) seq.push({ type: 'troca', label: 'Troca', duration: c.trocaDur, round, exerciseId: null });
       } else {
-        if (c.restDur > 0) seq.push({ type:'rest', label:'Descanso', duration: c.restDur, round: r });
+        if (c.restDur > 0) seq.push({ type: 'rest', label: 'Descanso', duration: c.restDur, round, exerciseId: null });
       }
     }
 
-    if (c.endDur > 0) seq.push({ type:'end', label:'Encerramento', duration: c.endDur, round: null });
+    if (c.endDur > 0) {
+      seq.push({ type: 'end', label: 'Encerramento', duration: c.endDur, round: null, exerciseId: null });
+    }
+
     return seq;
   }
 
   function updateTotals(){
     const c = readConfig();
     const seq = buildSequence(c);
-    const total = seq.reduce((sum, p) => sum + p.duration, 0);
-
-    const numRounds = c.rounds;
+    const total = seq.reduce((sum, phase) => sum + phase.duration, 0);
     const numTrocas = c.trocaEvery > 0 ? Math.floor((c.rounds - 1) / c.trocaEvery) : 0;
     const numRests = Math.max(0, (c.rounds - 1) - numTrocas);
 
-    totalTimeVal.textContent = fmtLong(total);
+    totalTimeVal.textContent = formatLong(total);
     breakdownVal.innerHTML =
-      (c.warmup > 0 ? ('Aquecimento: <b>' + fmtLong(c.warmup) + '</b> · ') : '') +
-      numRounds + ' rounds de <b>' + fmtLong(c.roundDur) + '</b>' +
-      (numRests > 0 ? (' · ' + numRests + ' descansos de <b>' + fmtLong(c.restDur) + '</b>') : '') +
-      (numTrocas > 0 ? (' · ' + numTrocas + ' trocas de <b>' + fmtLong(c.trocaDur) + '</b>') : '') +
-      (c.endDur > 0 ? (' · Encerramento: <b>' + fmtLong(c.endDur) + '</b>') : '');
+      (c.warmup > 0 ? 'Aquecimento: <b>' + formatLong(c.warmup) + '</b> · ' : '') +
+      c.rounds + ' rounds de <b>' + formatLong(c.roundDur) + '</b>' +
+      (numRests > 0 ? ' · ' + numRests + ' descansos de <b>' + formatLong(c.restDur) + '</b>' : '') +
+      (numTrocas > 0 ? ' · ' + numTrocas + ' trocas de <b>' + formatLong(c.trocaDur) + '</b>' : '') +
+      (c.endDur > 0 ? ' · Encerramento: <b>' + formatLong(c.endDur) + '</b>' : '');
 
     return { c, seq };
   }
 
-  Object.values(cfg).forEach(el => el.addEventListener('input', updateTotals));
+  Object.values(cfg).forEach(field => field.addEventListener('input', () => {
+    updateTotals();
+    renderManager();
+  }));
   updateTotals();
 
-  // ---------- Estado do cronômetro ----------
-  let SEQ = [];
-  const RADIUS = 104;
-  const CIRC = 2 * Math.PI * RADIUS;
+  const leftPanel = document.createElement('aside');
+  leftPanel.id = 'golpesPanel';
+  leftPanel.style.position = 'fixed';
+  leftPanel.style.left = '12px';
+  leftPanel.style.top = '100px';
+  leftPanel.style.width = '180px';
+  leftPanel.style.maxHeight = '72vh';
+  leftPanel.style.overflowY = 'auto';
+  leftPanel.style.padding = '12px';
+  leftPanel.style.borderRadius = '16px';
+  leftPanel.style.background = 'linear-gradient(180deg, rgba(18,14,24,0.96), rgba(31,25,42,0.9))';
+  leftPanel.style.border = '1px solid rgba(192,132,252,0.18)';
+  leftPanel.style.boxShadow = '0 24px 42px rgba(0,0,0,0.42)';
+  leftPanel.style.zIndex = '1200';
+  leftPanel.innerHTML = '<div style="font-size:11px; letter-spacing:0.12em; text-transform:uppercase; color:var(--purple-bright); font-weight:800; margin-bottom:10px;">Golpes</div><div id="golpesList"></div><div style="margin-top:12px; padding-top:8px; border-top:1px solid rgba(255,255,255,0.06);"><button id="openManagerBtn" style="width:100%;">Gerenciar</button></div>';
+  document.body.appendChild(leftPanel);
 
-  let idx = 0;
-  let remaining = 0;
-  let running = false;
-  let tickHandle = null;
-  let lastTimestamp = null;
+  function renderLeftPanel(exerciseId){
+    const golpes = readJSON(STORAGE.golpes, []);
+    const list = document.getElementById('golpesList');
+    list.innerHTML = '';
+
+    golpes.forEach(golpe => {
+      const node = document.createElement('div');
+      node.textContent = golpe.name;
+      node.style.padding = '6px 0';
+      node.style.borderBottom = '1px solid rgba(255,255,255,0.04)';
+      node.style.color = 'var(--text)';
+      node.style.fontSize = '13px';
+      list.appendChild(node);
+    });
+
+    if (exerciseId) {
+      const exercises = readJSON(STORAGE.exercises, []);
+      const exercise = exercises.find(item => item.id === exerciseId);
+      if (exercise) {
+        const header = document.createElement('div');
+        header.textContent = 'Exercício: ' + exercise.name;
+        header.style.marginTop = '14px';
+        header.style.fontWeight = '700';
+        header.style.color = 'var(--purple-bright)';
+        header.style.fontSize = '12px';
+        list.appendChild(header);
+
+        (exercise.golpes || []).forEach(golpeId => {
+          const golpe = golpes.find(item => item.id === golpeId);
+          if (!golpe) return;
+          const row = document.createElement('div');
+          row.textContent = '• ' + golpe.name;
+          row.style.marginLeft = '8px';
+          row.style.fontSize = '12px';
+          row.style.color = 'var(--muted)';
+          row.style.padding = '4px 0';
+          list.appendChild(row);
+        });
+      }
+    }
+  }
+
+  function renderManager(){
+    const golpes = readJSON(STORAGE.golpes, []);
+    const exercises = readJSON(STORAGE.exercises, []);
+    const assignments = readJSON(STORAGE.assignments, {});
+    const durations = readJSON(STORAGE.durations, {});
+
+    const manager = document.getElementById('managerModal');
+    if (!manager) return;
+
+    const golpeList = document.getElementById('managerGolpesList');
+    const exList = document.getElementById('managerExList');
+    const assignList = document.getElementById('managerAssignList');
+    if (!golpeList || !exList || !assignList) return;
+
+    golpeList.innerHTML = '';
+    golpes.forEach(golpe => {
+      const row = document.createElement('div');
+      row.style.display = 'flex';
+      row.style.justifyContent = 'space-between';
+      row.style.marginBottom = '8px';
+      row.innerHTML = '<span>' + golpe.name + '</span><button data-golpe-id="' + golpe.id + '" class="deleteGolpeBtn">Excluir</button>';
+      golpeList.appendChild(row);
+    });
+
+    exList.innerHTML = '';
+    exercises.forEach(exercise => {
+      const wrapper = document.createElement('div');
+      wrapper.style.marginBottom = '12px';
+      wrapper.innerHTML = '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;"><strong>' + exercise.name + '</strong><button data-exercise-id="' + exercise.id + '" class="deleteExerciseBtn">Excluir</button></div><div id="exerciseGolpes_' + exercise.id + '"></div>';
+      exList.appendChild(wrapper);
+
+      const box = document.getElementById('exerciseGolpes_' + exercise.id);
+      golpes.forEach(golpe => {
+        const label = document.createElement('label');
+        label.style.display = 'inline-flex';
+        label.style.alignItems = 'center';
+        label.style.gap = '6px';
+        label.style.marginRight = '8px';
+        label.style.marginBottom = '6px';
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.checked = (exercise.golpes || []).includes(golpe.id);
+        checkbox.addEventListener('change', () => {
+          const all = readJSON(STORAGE.exercises, []);
+          const item = all.find(ex => ex.id === exercise.id);
+          if (!item.golpes) item.golpes = [];
+          if (checkbox.checked) {
+            if (!item.golpes.includes(golpe.id)) item.golpes.push(golpe.id);
+          } else {
+            item.golpes = item.golpes.filter(id => id !== golpe.id);
+          }
+          writeJSON(STORAGE.exercises, all);
+          renderLeftPanel(currentExerciseIdForPanel());
+        });
+        label.appendChild(checkbox);
+        label.appendChild(document.createTextNode(golpe.name));
+        box.appendChild(label);
+      });
+    });
+
+    assignList.innerHTML = '';
+    const roundTotal = Math.max(1, parseInt(cfg.rounds.value, 10) || 1);
+    for (let round = 1; round <= roundTotal; round++) {
+      const row = document.createElement('div');
+      row.style.display = 'flex';
+      row.style.alignItems = 'center';
+      row.style.gap = '8px';
+      row.style.marginBottom = '8px';
+
+      const label = document.createElement('div');
+      label.textContent = 'Round ' + round;
+      label.style.width = '78px';
+      label.style.fontWeight = '700';
+
+      const select = document.createElement('select');
+      select.style.flex = '1';
+      const blank = document.createElement('option');
+      blank.value = '';
+      blank.textContent = '— Nenhum';
+      select.appendChild(blank);
+
+      exercises.forEach(exercise => {
+        const option = document.createElement('option');
+        option.value = exercise.id;
+        option.textContent = exercise.name;
+        if (assignments['r' + round] === exercise.id) option.selected = true;
+        select.appendChild(option);
+      });
+      select.addEventListener('change', () => {
+        const nextAssignments = readJSON(STORAGE.assignments, {});
+        nextAssignments['r' + round] = select.value || null;
+        writeJSON(STORAGE.assignments, nextAssignments);
+        renderLeftPanel(currentExerciseIdForPanel());
+      });
+
+      const durationMin = document.createElement('input');
+      durationMin.type = 'number';
+      durationMin.min = '0';
+      durationMin.value = Math.floor((durations['r' + round] || 0) / 60) || '';
+      durationMin.style.width = '54px';
+      durationMin.placeholder = 'min';
+
+      const durationSec = document.createElement('input');
+      durationSec.type = 'number';
+      durationSec.min = '0';
+      durationSec.max = '59';
+      durationSec.value = ((durations['r' + round] || 0) % 60) || '';
+      durationSec.style.width = '54px';
+      durationSec.placeholder = 'seg';
+
+      function saveRoundDuration(){
+        const nextDurations = readJSON(STORAGE.durations, {});
+        const minutes = parseInt(durationMin.value, 10) || 0;
+        const seconds = Math.max(0, Math.min(59, parseInt(durationSec.value, 10) || 0));
+        nextDurations['r' + round] = minutes * 60 + seconds;
+        writeJSON(STORAGE.durations, nextDurations);
+        updateTotals();
+      }
+
+      durationMin.addEventListener('change', saveRoundDuration);
+      durationSec.addEventListener('change', saveRoundDuration);
+
+      row.appendChild(label);
+      row.appendChild(select);
+      row.appendChild(durationMin);
+      row.appendChild(durationSec);
+      assignList.appendChild(row);
+    }
+
+    document.querySelectorAll('.deleteGolpeBtn').forEach(button => {
+      button.addEventListener('click', () => {
+        const golpeId = button.getAttribute('data-golpe-id');
+        const golpesNow = readJSON(STORAGE.golpes, []).filter(item => item.id !== golpeId);
+        writeJSON(STORAGE.golpes, golpesNow);
+
+        const exercisesNow = readJSON(STORAGE.exercises, []).map(exercise => ({
+          ...exercise,
+          golpes: (exercise.golpes || []).filter(id => id !== golpeId)
+        }));
+        writeJSON(STORAGE.exercises, exercisesNow);
+
+        renderManager();
+        renderLeftPanel(currentExerciseIdForPanel());
+        updateTotals();
+      });
+    });
+
+    document.querySelectorAll('.deleteExerciseBtn').forEach(button => {
+      button.addEventListener('click', () => {
+        const exerciseId = button.getAttribute('data-exercise-id');
+        const exercisesNow = readJSON(STORAGE.exercises, []).filter(item => item.id !== exerciseId);
+        writeJSON(STORAGE.exercises, exercisesNow);
+
+        const assignmentsNow = readJSON(STORAGE.assignments, {});
+        Object.keys(assignmentsNow).forEach(key => {
+          if (assignmentsNow[key] === exerciseId) delete assignmentsNow[key];
+        });
+        writeJSON(STORAGE.assignments, assignmentsNow);
+
+        renderManager();
+        renderLeftPanel(currentExerciseIdForPanel());
+        updateTotals();
+      });
+    });
+  }
+
+  let managerModal = null;
+
+  function createManagerModal(){
+    if (managerModal) {
+      managerModal.style.display = 'block';
+      return;
+    }
+
+    managerModal = document.createElement('div');
+    managerModal.id = 'managerModal';
+    managerModal.style.position = 'fixed';
+    managerModal.style.left = '50%';
+    managerModal.style.top = '50%';
+    managerModal.style.transform = 'translate(-50%, -50%)';
+    managerModal.style.width = '760px';
+    managerModal.style.maxWidth = '92vw';
+    managerModal.style.maxHeight = '82vh';
+    managerModal.style.overflowY = 'auto';
+    managerModal.style.background = 'var(--surface)';
+    managerModal.style.border = '1px solid rgba(192,132,252,0.2)';
+    managerModal.style.borderRadius = '16px';
+    managerModal.style.padding = '18px';
+    managerModal.style.boxShadow = '0 30px 60px rgba(0,0,0,0.55)';
+    managerModal.style.zIndex = '2000';
+    managerModal.innerHTML = `
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:14px;">
+        <h3 style="margin:0; font-size:22px;">Gerenciar exercícios e golpes</h3>
+        <button id="closeManagerBtn">Fechar</button>
+      </div>
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:18px;">
+        <div>
+          <h4 style="margin:0 0 10px;">Golpes</h4>
+          <div id="managerGolpesList"></div>
+          <div style="display:flex; gap:8px; margin-top:12px;">
+            <input id="newGolpeName" placeholder="Nome do golpe" style="flex:1;">
+            <button id="addGolpeBtn">Adicionar</button>
+          </div>
+        </div>
+        <div>
+          <h4 style="margin:0 0 10px;">Exercícios</h4>
+          <div id="managerExList"></div>
+          <div style="display:flex; gap:8px; margin-top:12px;">
+            <input id="newExerciseName" placeholder="Nome do exercício" style="flex:1;">
+            <button id="addExerciseBtn">Adicionar</button>
+          </div>
+        </div>
+      </div>
+      <div style="margin-top:18px;">
+        <h4 style="margin:0 0 10px;">Atribuir por round</h4>
+        <div id="managerAssignList"></div>
+      </div>
+    `;
+
+    document.body.appendChild(managerModal);
+
+    document.getElementById('closeManagerBtn').addEventListener('click', () => managerModal.style.display = 'none');
+
+    document.getElementById('addGolpeBtn').addEventListener('click', () => {
+      const input = document.getElementById('newGolpeName');
+      const value = (input.value || '').trim();
+      if (!value) return alert('Digite o nome do golpe');
+      const golpes = readJSON(STORAGE.golpes, []);
+      golpes.push({ id: 'g' + Date.now(), name: value });
+      writeJSON(STORAGE.golpes, golpes);
+      input.value = '';
+      renderManager();
+      renderLeftPanel(currentExerciseIdForPanel());
+    });
+
+    document.getElementById('addExerciseBtn').addEventListener('click', () => {
+      const input = document.getElementById('newExerciseName');
+      const value = (input.value || '').trim();
+      if (!value) return alert('Digite o nome do exercício');
+      const exercises = readJSON(STORAGE.exercises, []);
+      exercises.push({ id: 'e' + Date.now(), name: value, golpes: [] });
+      writeJSON(STORAGE.exercises, exercises);
+      input.value = '';
+      renderManager();
+      renderLeftPanel(currentExerciseIdForPanel());
+    });
+
+    renderManager();
+  }
+
+  function currentExerciseIdForPanel(){
+    if (!SEQ.length) return null;
+    const phase = SEQ[idx];
+    return phase && phase.type === 'round' ? phase.exerciseId : null;
+  }
 
   const phaseLabelEl = document.getElementById('phaseLabel');
   const roundCountEl = document.getElementById('roundCount');
@@ -475,62 +832,16 @@
   const backBtn = document.getElementById('backBtn');
   const forwardBtn = document.getElementById('forwardBtn');
 
-  ringEl.setAttribute('stroke-dasharray', CIRC.toFixed(2));
+  let SEQ = [];
+  let idx = 0;
+  let remaining = 0;
+  let running = false;
+  let tickHandle = null;
+  let lastTimestamp = null;
 
-  // ---------- Áudio (Web Audio API) ----------
-  let audioCtx = null;
-  function ensureAudio(){
-    if (!audioCtx){
-      const AC = window.AudioContext || window.webkitAudioContext;
-      audioCtx = new AC();
-    }
-    if (audioCtx.state === 'suspended') audioCtx.resume();
-  }
-
-  function beep(freq, dur, delay, gainPeak){
-    if (!audioCtx) return;
-    const t0 = audioCtx.currentTime + (delay || 0);
-    const osc = audioCtx.createOscillator();
-    const gain = audioCtx.createGain();
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(freq, t0);
-    gain.gain.setValueAtTime(0.0001, t0);
-    gain.gain.exponentialRampToValueAtTime(gainPeak || 0.35, t0 + 0.02);
-    gain.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
-    osc.connect(gain);
-    gain.connect(audioCtx.destination);
-    osc.start(t0);
-    osc.stop(t0 + dur + 0.05);
-  }
-
-  function playTransitionSound(nextType){
-    ensureAudio();
-    if (nextType === 'troca'){
-      beep(1046, 0.18, 0, 0.45);
-      beep(1046, 0.18, 0.22, 0.45);
-      beep(1318, 0.28, 0.44, 0.5);
-    } else if (nextType === 'round'){
-      beep(880, 0.16, 0, 0.4);
-      beep(880, 0.16, 0.2, 0.4);
-    } else if (nextType === 'end'){
-      beep(660, 0.2, 0, 0.4);
-      beep(880, 0.2, 0.25, 0.4);
-      beep(1046, 0.4, 0.5, 0.45);
-    } else {
-      beep(660, 0.2, 0, 0.35);
-    }
-  }
-
-  function playCountdownTick(){
-    ensureAudio();
-    beep(520, 0.09, 0, 0.25);
-  }
-
-  function formatTime(s){
-    const m = Math.floor(s / 60);
-    const sec = s % 60;
-    return m + ':' + String(sec).padStart(2, '0');
-  }
+  const RADIUS = 104;
+  const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
+  ringEl.setAttribute('stroke-dasharray', String(CIRCUMFERENCE));
 
   function phaseClass(type){
     if (type === 'rest') return 'rest';
@@ -539,62 +850,101 @@
     return '';
   }
 
-  function render(){
+  function renderSequenceTrack(){
+    seqTrackEl.innerHTML = '';
+    SEQ.forEach((phase, index) => {
+      const segment = document.createElement('div');
+      let label = '·';
+      if (phase.type === 'warmup') label = 'AQ';
+      else if (phase.type === 'end') label = 'FIM';
+      else if (phase.type === 'round') label = 'R' + phase.round;
+      else if (phase.type === 'troca') label = 'TR';
+      segment.className = 'seg ' + phase.type;
+      if (index < idx) segment.classList.add('done');
+      if (index === idx) segment.classList.add('current');
+      segment.textContent = label;
+      seqTrackEl.appendChild(segment);
+    });
+
+    const currentSegment = seqTrackEl.querySelector('.current');
+    if (currentSegment) currentSegment.scrollIntoView({ inline: 'center', block: 'nearest' });
+  }
+
+  function renderTimer(){
     if (!SEQ.length) return;
+
     const phase = SEQ[idx];
     const cls = phaseClass(phase.type);
+    const totalRounds = SEQ.filter(item => item.type === 'round').length;
 
     phaseLabelEl.textContent = phase.label;
     phaseLabelEl.className = 'phase-label' + (cls ? ' ' + cls : '');
 
-    const totalRounds = SEQ.filter(p => p.type === 'round').length;
-    if (phase.round){
+    if (phase.round) {
       roundCountEl.textContent = 'Round ' + phase.round + ' / ' + totalRounds;
-    } else if (phase.type === 'warmup'){
+    } else if (phase.type === 'warmup') {
       roundCountEl.textContent = 'Aquecimento';
-    } else if (phase.type === 'end'){
+    } else if (phase.type === 'end') {
       roundCountEl.textContent = 'Treino concluído';
     } else {
       roundCountEl.textContent = '— / ' + totalRounds;
     }
 
-    timeTextEl.textContent = formatTime(remaining);
+    timeTextEl.textContent = formatClock(remaining);
+    const next = SEQ[idx + 1];
+    nextPhaseEl.textContent = next ? 'Próximo: ' + next.label : 'Fim do treino';
 
     const urgent = remaining <= 5 && remaining > 0 && phase.type !== 'end';
     timeTextEl.classList.toggle('urgent', urgent);
     ringEl.classList.toggle('urgent', urgent && phase.type === 'round');
 
-    const next = SEQ[idx + 1];
-    nextPhaseEl.textContent = next ? ('Próximo: ' + next.label) : 'Fim do treino';
-
-    const frac = phase.duration > 0 ? (remaining / phase.duration) : 0;
-    const offset = CIRC * (1 - frac);
-    ringEl.style.strokeDashoffset = offset.toFixed(2);
+    const progress = phase.duration > 0 ? remaining / phase.duration : 0;
+    ringEl.style.strokeDashoffset = String(CIRCUMFERENCE * (1 - progress));
     ringEl.className = 'ring-progress' + (cls ? ' ' + cls : '');
 
-    renderSeqTrack();
+    renderSequenceTrack();
+    renderLeftPanel(currentExerciseIdForPanel());
   }
 
-  function renderSeqTrack(){
-    seqTrackEl.innerHTML = '';
-    SEQ.forEach((phase, i) => {
-      const seg = document.createElement('div');
-      let label;
-      if (phase.type === 'warmup') label = 'AQ';
-      else if (phase.type === 'end') label = 'FIM';
-      else if (phase.type === 'round') label = 'R' + phase.round;
-      else if (phase.type === 'troca') label = 'TR';
-      else label = '·';
+  function formatClock(value){
+    const minutes = Math.floor(value / 60);
+    const seconds = value % 60;
+    return minutes + ':' + String(seconds).padStart(2, '0');
+  }
 
-      seg.className = 'seg ' + phase.type;
-      if (i < idx) seg.classList.add('done');
-      if (i === idx) seg.classList.add('current');
-      seg.textContent = label;
-      seqTrackEl.appendChild(seg);
-    });
+  function playSound(type){
+    const AudioCtor = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtor) return;
+    const context = new AudioCtor();
+    const beep = (freq, duration, delay, gainValue) => {
+      const startAt = context.currentTime + delay;
+      const osc = context.createOscillator();
+      const gain = context.createGain();
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+      gain.gain.value = 0.0001;
+      gain.gain.exponentialRampToValueAtTime(gainValue, startAt + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, startAt + duration);
+      osc.connect(gain);
+      gain.connect(context.destination);
+      osc.start(startAt);
+      osc.stop(startAt + duration + 0.05);
+    };
 
-    const current = seqTrackEl.querySelector('.current');
-    if (current) current.scrollIntoView({ inline: 'center', block: 'nearest' });
+    if (type === 'troca') {
+      beep(1046, 0.18, 0, 0.45);
+      beep(1046, 0.18, 0.20, 0.45);
+      beep(1318, 0.28, 0.40, 0.5);
+    } else if (type === 'round') {
+      beep(880, 0.16, 0, 0.4);
+      beep(880, 0.16, 0.18, 0.4);
+    } else if (type === 'end') {
+      beep(660, 0.20, 0, 0.40);
+      beep(880, 0.20, 0.20, 0.40);
+      beep(1046, 0.35, 0.40, 0.45);
+    } else {
+      beep(660, 0.18, 0, 0.35);
+    }
   }
 
   function tick(timestamp){
@@ -602,49 +952,26 @@
     if (lastTimestamp === null) lastTimestamp = timestamp;
     const delta = (timestamp - lastTimestamp) / 1000;
 
-    if (delta >= 1){
+    if (delta >= 1) {
       lastTimestamp = timestamp;
       remaining -= 1;
 
-      if (remaining <= 3 && remaining > 0){
-        playCountdownTick();
+      if (remaining <= 3 && remaining > 0) {
+        playSound('round');
       }
 
-      if (remaining < 0){
+      if (remaining < 0) {
         advancePhase(true);
       } else {
-        render();
+        renderTimer();
       }
     }
 
     if (running) tickHandle = requestAnimationFrame(tick);
   }
 
-  function advancePhase(playSound){
-    if (idx < SEQ.length - 1){
-      idx += 1;
-      remaining = SEQ[idx].duration;
-      if (playSound) playTransitionSound(SEQ[idx].type);
-      render();
-    } else {
-      remaining = 0;
-      running = false;
-      updateStartButton();
-      render();
-      if (tickHandle) cancelAnimationFrame(tickHandle);
-    }
-  }
-
-  function goBackPhase(){
-    if (idx > 0){
-      idx -= 1;
-    }
-    remaining = SEQ[idx].duration;
-    render();
-  }
-
   function updateStartButton(){
-    if (running){
+    if (running) {
       startBtn.textContent = 'Em andamento…';
       startBtn.classList.add('running');
     } else {
@@ -659,46 +986,65 @@
     updateStartButton();
   }
 
-  // ---------- Controles do cronômetro ----------
-  startBtn.addEventListener('click', () => {
-    if (running || !SEQ.length) return;
-    ensureAudio();
-    running = true;
-    lastTimestamp = null;
-    updateStartButton();
-    tickHandle = requestAnimationFrame(tick);
-  });
+  function advancePhase(playSoundFlag){
+    if (idx < SEQ.length - 1) {
+      idx += 1;
+      remaining = SEQ[idx].duration;
+      if (playSoundFlag) playSound(SEQ[idx].type);
+      renderTimer();
+    } else {
+      remaining = 0;
+      running = false;
+      updateStartButton();
+      renderTimer();
+      if (tickHandle) cancelAnimationFrame(tickHandle);
+    }
+  }
 
-  pauseBtn.addEventListener('click', () => { stopEngine(); });
+  function goBackPhase(){
+    if (idx > 0) idx -= 1;
+    remaining = SEQ[idx].duration;
+    renderTimer();
+  }
 
-  resetBtn.addEventListener('click', () => {
-    stopEngine();
-    idx = 0;
-    remaining = SEQ.length ? SEQ[0].duration : 0;
-    render();
-  });
-
-  forwardBtn.addEventListener('click', () => { advancePhase(false); });
-  backBtn.addEventListener('click', () => { goBackPhase(); });
-
-  // ---------- Transição Config <-> Timer ----------
   startClassBtn.addEventListener('click', () => {
     const { seq } = updateTotals();
-    if (!seq.length){
+    if (!seq.length) {
       alert('Defina ao menos uma etapa com duração maior que zero.');
       return;
     }
+
     SEQ = seq;
     idx = 0;
     remaining = SEQ[0].duration;
     stopEngine();
-    render();
+    renderTimer();
 
     configView.style.display = 'none';
     timerView.style.display = 'block';
     seqTitleWrap.style.display = 'block';
     footerNote.style.display = 'block';
   });
+
+  startBtn.addEventListener('click', () => {
+    if (running || !SEQ.length) return;
+    running = true;
+    lastTimestamp = null;
+    updateStartButton();
+    tickHandle = requestAnimationFrame(tick);
+  });
+
+  pauseBtn.addEventListener('click', () => stopEngine());
+
+  resetBtn.addEventListener('click', () => {
+    stopEngine();
+    idx = 0;
+    remaining = SEQ.length ? SEQ[0].duration : 0;
+    renderTimer();
+  });
+
+  forwardBtn.addEventListener('click', () => advancePhase(false));
+  backBtn.addEventListener('click', () => goBackPhase());
 
   editConfigBtn.addEventListener('click', () => {
     stopEngine();
@@ -707,8 +1053,12 @@
     seqTitleWrap.style.display = 'none';
     footerNote.style.display = 'none';
   });
+
+  document.getElementById('openManagerBtn').addEventListener('click', createManagerModal);
+  renderLeftPanel(null);
+  renderManager();
 })();
 </script>
-<script src="enhancements.js"></script>
+
 </body>
 </html>
