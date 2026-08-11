@@ -1,4 +1,4 @@
-(function(){
+(function(){ console.log('enhancements.js loaded'); try{ var __wt_badge = document.createElement('div'); __wt_badge.textContent = 'Enhancements active'; __wt_badge.style.cssText = 'position:fixed;right:12px;bottom:12px;padding:6px 10px;background:rgba(51,32,68,0.9);color:var(--purple-bright);border-radius:8px;font-weight:700;z-index:99999;font-size:12px;'; document.body && document.body.appendChild(__wt_badge); }catch(e){ console.warn('badge failed', e); }
   // Enhancements: manager, local storage, custom sequence editor and timer controller
   const LS_EX = 'wt_exercises_v1';
   const LS_GOLPES = 'wt_golpes_v1';
