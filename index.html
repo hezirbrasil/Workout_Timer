@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>MMA House — Cronômetro Simples</title>
+<title>Timer Builder — Cronômetro Simples</title>
 <style>
   :root{--bg:#000;--fg:#eee;--accent:#8a2be2;--muted:#9b9b9b}
   *{box-sizing:border-box}
@@ -42,7 +42,7 @@
 <body>
   <div class="wrap">
     <div class="panel">
-      <h1>Cronômetro — Simples</h1>
+      <h1>Timer Builder</h1>
       <!-- Removed warmup/rest/end: user will configure all blocks manually -->
       <div style="margin-top:6px;color:var(--muted);font-size:13px">Configure todos os blocos manualmente abaixo.</div>
 
@@ -100,7 +100,7 @@
 const LS='mma.simple.timer.v1';
 let store = {warmup:30,rest:60,end:60,rounds:[{name:'Round 1',dur:60},{name:'Round 2',dur:60}]};
 // runtime flag — declared early to avoid TDZ when updateUI/renderRounds runs before timer initialization
-var running = false;
+window.running = false;
 function load(){try{const s=localStorage.getItem(LS); if(s) store=JSON.parse(s);}catch(e){} updateUI();}
 function save(){localStorage.setItem(LS,JSON.stringify(store)); updateUI();}
 
@@ -110,7 +110,7 @@ const startBtn=document.getElementById('start'); const pauseBtn=document.getElem
 
 function renderRounds(){els.rounds.innerHTML=''; store.rounds.forEach((r,i)=>{
   const div=document.createElement('div'); div.className='round'; div.setAttribute('draggable','true'); div.dataset.index = i;
-  const disabledAttr = (typeof running !== 'undefined' && running) ? 'disabled' : '';
+  const disabledAttr = window.running ? 'disabled' : '';
   // determine unit and display value
   const currentSeconds = r.dur || 0; const useMin = currentSeconds % 60 === 0 && currentSeconds !== 0; const displayVal = useMin ? (currentSeconds/60) : currentSeconds; const unitSel = useMin ? 'm' : 's';
   div.innerHTML = `<div class="name"><input data-i="${i}" class="rname" value="${escapeHtml(r.name)}" style="background:transparent;border:0;color:var(--fg)"></div><input data-i="${i}" class="rdur" type="number" value="${displayVal}" min="1" step="1"><select data-i="${i}" class="runit" style="width:70px;padding:6px;border-radius:6px;background:#050505;border:1px solid #111;color:var(--fg)"><option value="s" ${unitSel==='s'?'selected':''}>seg</option><option value="m" ${unitSel==='m'?'selected':''}>min</option></select><div style="display:flex;gap:6px"><button data-i="${i}" class="btn small move-up" ${disabledAttr}>▲</button><button data-i="${i}" class="btn small move-down" ${disabledAttr}>▼</button><button data-i="${i}" class="btn small del" ${disabledAttr}>✖</button></div>`;
@@ -160,7 +160,7 @@ els.rounds.addEventListener('input', e => { const t = e.target; const i = Number
 els.rounds.addEventListener('click', e => {
   const b = e.target.closest('button'); if(!b) return; const i = Number(b.dataset.i);
   if(b.classList.contains('del')){
-    if(typeof running !== 'undefined' && running){ alert('Não é possível excluir enquanto o cronômetro está rodando.'); return; }
+    if(window.running){ alert('Não é possível excluir enquanto o cronômetro está rodando.'); return; }
     store.rounds.splice(i,1); save(); renderRounds(); return;
   }
   if(b.classList.contains('move-up')){
@@ -173,33 +173,41 @@ els.rounds.addEventListener('click', e => {
   }
 });
 
-document.getElementById('applyAllRest').addEventListener('click',()=>{ if(!confirm('Aplicar descanso padrão para todos os rounds?')) return; store.rounds.forEach(r=>r.postRest = store.rest); save(); alert('Aplicado');});
+const applyAllRestBtn = document.getElementById('applyAllRest'); if(applyAllRestBtn){ applyAllRestBtn.addEventListener('click', ()=>{ if(!confirm('Aplicar descanso padrão para todos os rounds?')) return; store.rounds.forEach(r=>r.postRest = store.rest); save(); alert('Aplicado'); }); }
 
-document.getElementById('clearAll').addEventListener('click',()=>{ if(!confirm('Limpar tudo e restaurar padrão?')) return; store = {warmup:30,rest:60,end:60,rounds:[{name:'Round 1',dur:60},{name:'Round 2',dur:60}]}; save(); renderRounds(); });
+const clearAllBtn = document.getElementById('clearAll'); if(clearAllBtn){ clearAllBtn.addEventListener('click',()=>{ if(!confirm('Limpar tudo e restaurar padrão?')) return; store = {warmup:30,rest:60,end:60,rounds:[{name:'Round 1',dur:60},{name:'Round 2',dur:60}]}; save(); renderRounds(); }); }
 
 // audio
 function playTone(freq,duration,ctx){ try{ ctx = ctx || new (window.AudioContext || window.webkitAudioContext)(); const o = ctx.createOscillator(); const g = ctx.createGain(); o.type='sine'; o.frequency.value = freq; o.connect(g); g.connect(ctx.destination); g.gain.setValueAtTime(0.0001, ctx.currentTime); g.gain.exponentialRampToValueAtTime(0.15, ctx.currentTime + 0.01); o.start(); g.gain.exponentialRampToValueAtTime(0.00001, ctx.currentTime + duration); o.stop(ctx.currentTime + duration + 0.02); }catch(e){/* ignore */} }
 function playBeep(kind){ if(kind==='start') playTone(880,0.25); else if(kind==='next') { playTone(1200,0.18); setTimeout(()=>playTone(800,0.12),120); } else playTone(640,0.18); }
 
 // timer engine
-let seq = []; let idx=0; let phase='idle'; let remaining=0; let raf=0; let last=0;
+var seq = window.seq || []; let idx=0; let phase='idle'; let remaining=0; let raf=0; let last=0;
 function buildSeq(){ seq = []; // use exactly the configured blocks in order
   store.rounds.forEach((r)=>{ seq.push({type: r.name || 'Bloco', dur: r.dur || 0}); }); }
-function start(){ if(running) return; if(seq.length===0) buildSeq(); if(phase==='idle'){ idx=0; remaining = seq[0].dur; phase=seq[0].type; playBeep('start'); } running=true; last=performance.now(); tick();}
-function pause(){ running=false; if(raf) cancelAnimationFrame(raf); raf=0;}
+function start(){ if(window.running) return; if(seq.length===0) buildSeq(); if(phase==='idle' || phase==='Pronto'){ idx=0; remaining = seq[0]?.dur || 0; phase = seq[0]?.type || 'Pronto'; playBeep('start'); } window.running = true; last = performance.now(); updateDisplay(); if(raf) cancelAnimationFrame(raf); raf = requestAnimationFrame(tick); }
+function pause(){ window.running=false; if(raf) cancelAnimationFrame(raf); raf=0;}
 function reset(){ pause(); buildSeq(); idx=0; phase='idle'; remaining=0; updateDisplay();}
 function next(){ if(seq.length===0) buildSeq(); remaining=0; }
 function prev(){ if(seq.length===0) buildSeq(); idx = Math.max(0, idx-1); remaining = seq[idx]?.dur || 0; phase = seq[idx]?.type || 'idle'; playBeep('next'); updateDisplay(); }
 
-function tick(ts){ if(!running) return; const dt=(ts-last)/1000; last=ts; remaining -= dt; if(remaining<=0){ idx++; if(idx>=seq.length){ running=false; phase='Pronto'; remaining=0; updateDisplay(); playBeep('end'); return;} phase = seq[idx].type; remaining = seq[idx].dur; playBeep('next'); }
- updateDisplay(); raf = requestAnimationFrame(tick);} 
+function tick(ts){ if(!window.running) return; if(typeof ts === 'undefined') ts = performance.now(); const dt = (ts - last) / 1000; last = ts; remaining -= dt; if(remaining <= 0){ idx++; if(idx >= seq.length){ window.running = false; phase = 'Pronto'; remaining = 0; updateDisplay(); playBeep('end'); return; } phase = seq[idx].type; remaining = seq[idx].dur; playBeep('next'); }
+ updateDisplay(); raf = requestAnimationFrame(tick); } 
 
 function formatTime(s){ s=Math.max(0,Math.round(s)); const m=Math.floor(s/60); const ss=s%60; return `${String(m).padStart(2,'0')}:${String(ss).padStart(2,'0')}` }
 
-function updateDisplay(){ if(phase==='idle' && seq.length>0){ phase = seq[idx]?.type || 'Pronto'; remaining = seq[idx]?.dur || 0; }
- phaseNameEl.textContent = phase || 'Pronto'; timeLeftEl.textContent = formatTime(remaining); infoEl.textContent = `Bloco ${idx+1} / ${seq.length} • Total: ${formatTime(totalDuration())}`;
- // progress ring update
- const totalForPhase = (seq[idx] && seq[idx].dur) ? seq[idx].dur : 1; const pct = totalForPhase>0 ? (Math.max(0,remaining)/totalForPhase) : 0; const circumference = 2*Math.PI*40; const dash = (circumference * pct).toFixed(2); progEl.setAttribute('stroke-dasharray', `${dash} ${circumference}`);
+function updateDisplay(){ try{
+   if(phase==='idle' && seq.length>0){ phase = seq[idx]?.type || 'Pronto'; remaining = seq[idx]?.dur || 0; }
+   if(phaseNameEl) phaseNameEl.textContent = phase || 'Pronto';
+   if(timeLeftEl) timeLeftEl.textContent = formatTime(remaining);
+   if(infoEl) infoEl.textContent = `Bloco ${idx+1} / ${seq.length} • Total: ${formatTime(totalDuration())}`;
+   // progress ring update
+   const totalForPhase = (seq[idx] && seq[idx].dur) ? seq[idx].dur : 1;
+   const pct = totalForPhase>0 ? (Math.max(0,remaining)/totalForPhase) : 0;
+   const circumference = 2*Math.PI*40;
+   const dash = (circumference * pct).toFixed(2);
+   if(progEl && typeof progEl.setAttribute === 'function') progEl.setAttribute('stroke-dasharray', `${dash} ${circumference}`);
+ }catch(e){ console.error('updateDisplay error', e); }
 }
 
 // central update used by save/load
@@ -207,7 +215,7 @@ function updateUI(){ try{ renderRounds(); buildSeq(); updateDisplay(); }catch(e)
 
 function totalDuration(){ buildSeq(); return seq.reduce((a,b)=>a+(b.dur||0),0); }
 
-startBtn.addEventListener('click',start); pauseBtn.addEventListener('click',pause); resetBtn.addEventListener('click',reset); prevBtn.addEventListener('click',prev); nextBtn.addEventListener('click',next);
+if(startBtn) startBtn.addEventListener('click',start); if(pauseBtn) pauseBtn.addEventListener('click',pause); if(resetBtn) resetBtn.addEventListener('click',reset); if(prevBtn) prevBtn.addEventListener('click',prev); if(nextBtn) nextBtn.addEventListener('click',next);
 
 // init
 load(); renderRounds(); buildSeq(); updateDisplay();
