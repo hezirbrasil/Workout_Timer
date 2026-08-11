@@ -1,409 +1,170 @@
 ﻿<!doctype html>
 <html lang="pt-BR">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>MMA House — Timer de Treino</title>
-  <style>
-    :root{
-      --bg:#0b0f14; --panel:#0f1720; --muted:#9aa4b2; --accent1:#6b5cff; --accent2:#2bb7ff; --accent3:#ffd24a; --glass: rgba(255,255,255,0.03);
-      --radius:12px; --glass-2: rgba(255,255,255,0.02);
-    }
-    *{box-sizing:border-box}
-    html,body{height:100%}
-    body{margin:0;font-family:Inter,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:linear-gradient(180deg,#05060a 0%,var(--bg) 100%);color:#e6eef8}
-    header{padding:18px 24px;border-bottom:1px solid rgba(255,255,255,0.04);display:flex;align-items:center;gap:16px}
-    .logo{display:flex;align-items:center;gap:12px}
-    .logo .mark{width:44px;height:44px;border-radius:10px;background:linear-gradient(135deg,var(--accent1),var(--accent2));display:flex;align-items:center;justify-content:center;font-weight:700}
-    .logo h1{font-size:18px;margin:0}
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MMA House — Cronômetro Simples</title>
+<style>
+  :root{--bg:#000;--fg:#eee;--accent:#8a2be2;--muted:#9b9b9b}
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0;background:var(--bg);color:var(--fg);font-family:Inter,system-ui,Segoe UI,Roboto,Arial}
+  .wrap{max-width:980px;margin:20px auto;padding:18px;display:grid;grid-template-columns:320px 1fr;gap:18px}
+  .panel{background:#070707;border:1px solid rgba(138,43,226,0.12);padding:14px;border-radius:10px}
+  h1{font-size:20px;margin:0 0 10px 0;color:var(--accent)}
+  label{font-size:12px;color:var(--muted)}
+  input[type=number],input[type=text],select{width:100%;padding:8px;border-radius:8px;border:1px solid #111;background:#050505;color:var(--fg);margin-top:6px}
+  .list{margin-top:10px;max-height:420px;overflow:auto}
+  .round{display:flex;gap:8px;align-items:center;padding:8px;border-radius:8px;background:linear-gradient(90deg,rgba(138,43,226,0.03),transparent);margin-bottom:8px}
+  .round input{width:76px}
+  .round .name{flex:1}
+  .btn{background:transparent;border:1px solid rgba(255,255,255,0.05);color:var(--fg);padding:8px 10px;border-radius:8px;cursor:pointer}
+  .btn.primary{background:linear-gradient(90deg,var(--accent),#6f50d8);color:#fff;border:0}
 
-    .container{display:grid;grid-template-columns:430px 1fr;gap:20px;padding:20px;max-width:1200px;margin:24px auto}
-    .panel{background:linear-gradient(180deg,var(--glass),var(--glass-2));padding:18px;border-radius:var(--radius);border:1px solid rgba(255,255,255,0.03)}
-    .panel h2{margin:0 0 12px 0;font-size:16px;color:var(--muted)}
+  /* timer */
+  .timer{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:30px}
+  .time{font-size:56px;font-weight:700;color:var(--fg)}
+  .phase{font-size:14px;color:var(--muted);margin-bottom:6px}
+  .controls{display:flex;gap:8px;margin-top:18px}
+  .small{font-size:13px;padding:6px 8px}
+  .meta{margin-top:12px;color:var(--muted);font-size:13px}
 
-    /* Config */
-    .form-row{display:flex;gap:8px;margin-bottom:10px}
-    label{display:block;font-size:12px;color:var(--muted);margin-bottom:6px}
-    input[type=number],select,input[type=text]{width:100%;padding:8px 10px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:inherit}
-    .small{width:120px}
-    .muted{font-size:12px;color:var(--muted)}
+  /* progress ring */
+  .ring{width:220px;height:220px;display:flex;align-items:center;justify-content:center;position:relative;margin-bottom:12px}
+  .ring svg{transform:rotate(-90deg)}
+  .ring .center{position:absolute;display:flex;flex-direction:column;align-items:center}
 
-    /* Exercises & strikes */
-    .list{max-height:220px;overflow:auto;margin-top:8px;padding-right:6px}
-    .item{display:flex;align-items:center;gap:8px;padding:8px;border-radius:8px;background:rgba(0,0,0,0.15);margin-bottom:8px}
-    .item .name{flex:1}
-    .btn{background:transparent;border:1px solid rgba(255,255,255,0.06);color:inherit;padding:8px 10px;border-radius:8px;cursor:pointer}
-    .btn.primary{background:linear-gradient(90deg,var(--accent1),var(--accent2));color:#06101a;border:0}
-    .btn.ghost{background:transparent}
-    .row{display:flex;gap:8px}
-
-    /* Timer area */
-    .timer-wrap{display:grid;grid-template-columns:1fr 320px;gap:18px}
-    .card{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;border-radius:16px}
-    .big{font-size:42px;font-weight:700;margin:6px 0}
-    .phase{font-size:14px;color:var(--muted)}
-
-    /* circular */
-    .circle{width:320px;height:320px;display:flex;align-items:center;justify-content:center;position:relative}
-    svg{transform:rotate(-90deg)}
-    .center{position:absolute;display:flex;flex-direction:column;align-items:center}
-    .controls{display:flex;gap:8px;margin-top:16px}
-
-    .meta{display:flex;gap:12px;margin-top:10px;flex-wrap:wrap}
-    .chip{background:rgba(255,255,255,0.03);padding:8px 12px;border-radius:12px;font-size:13px;color:var(--muted)}
-
-    footer{padding:18px;text-align:center;color:var(--muted);font-size:13px}
-
-    /* small screens */
-    @media (max-width:930px){
-      .container{grid-template-columns:1fr;padding:12px}
-      .timer-wrap{grid-template-columns:1fr}
-      .circle{width:260px;height:260px}
-    }
-  </style>
+  @media(max-width:880px){.wrap{grid-template-columns:1fr;padding:12px}.timer{padding:18px}.time{font-size:44px}}
+</style>
 </head>
 <body>
-  <header>
-    <div class="logo">
-      <div class="mark">MH</div>
+  <div class="wrap">
+    <div class="panel">
+      <h1>Cronômetro — Simples</h1>
       <div>
-        <h1>MMA House — Timer</h1>
-        <div class="muted">Um treino claro e rápido — tudo em uma tela</div>
+        <label>Aquecimento (segundos)</label>
+        <input id="warmup" type="number" min="0" value="30">
       </div>
-    </div>
-    <div style="margin-left:auto" class="muted">Salvamento local via localStorage</div>
-  </header>
-
-  <main class="container">
-    <section class="panel">
-      <h2>Configuração</h2>
-      <div class="form-row">
+      <div style="margin-top:10px;display:flex;gap:8px;align-items:center">
         <div style="flex:1">
-          <label>Aquecimento (segundos)</label>
-          <input id="cfg-warmup" type="number" min="0" value="60">
+          <label>Duração de descanso padrão (seg)</label>
+          <input id="rest" type="number" min="0" value="60">
         </div>
-        <div>
-          <label>Nº de rounds</label>
-          <input id="cfg-rounds" type="number" min="1" value="5" class="small">
-        </div>
-      </div>
-      <div class="form-row">
-        <div style="flex:1">
-          <label>Duração por round (segundos)</label>
-          <input id="cfg-round-duration" type="number" min="1" value="180">
-        </div>
-        <div>
-          <label>Descanso entre rounds (seg)</label>
-          <input id="cfg-rest" type="number" min="0" value="60" class="small">
-        </div>
-      </div>
-      <div class="form-row">
-        <div style="flex:1">
-          <label>Troca de exercício a cada X rounds (0 = nunca)</label>
-          <input id="cfg-switch-every" type="number" min="0" value="2">
-        </div>
-        <div>
-          <label>Duração da troca (seg)</label>
-          <input id="cfg-switch-duration" type="number" min="0" value="30" class="small">
-        </div>
-      </div>
-      <div class="form-row">
-        <div style="flex:1">
-          <label>Encerramento / alongamento (segundos)</label>
-          <input id="cfg-end" type="number" min="0" value="60">
-        </div>
-        <div style="width:160px">
-          <label>Nome do treino</label>
-          <input id="cfg-name" type="text" value="MMA House">
+        <div style="width:120px">
+          <label>Encerramento (seg)</label>
+          <input id="end" type="number" min="0" value="60">
         </div>
       </div>
 
-      <div style="margin-top:12px">
-        <label>Duração total estimada</label>
-        <div id="total-duration" class="muted">--:--</div>
+      <hr style="opacity:0.06;margin:12px 0">
+      <div style="display:flex;gap:8px;align-items:center">
+        <input id="newName" type="text" placeholder="Nome do round (ex: Circuito)" style="flex:1;padding:8px;border-radius:8px;border:1px solid #111;background:#050505;color:var(--fg)">
+        <input id="newDur" type="number" value="60" min="1" style="width:90px">
+        <button id="addRound" class="btn primary">Adicionar</button>
       </div>
 
-      <hr style="opacity:0.05;margin:12px 0">
-      <h2>Gerenciar golpes e exercícios</h2>
-      <div style="display:flex;gap:8px;margin-bottom:8px">
-        <input id="new-strike" type="text" placeholder="Adicionar golpe (ex: Jab)">
-        <button id="add-strike" class="btn">Adicionar</button>
-      </div>
-      <div class="list" id="strikes-list"></div>
+      <div class="list" id="rounds"></div>
 
-      <div style="height:12px"></div>
-      <div style="display:flex;gap:8px;margin-bottom:8px">
-        <input id="new-ex" type="text" placeholder="Adicionar exercício (ex: Sombra)">
-        <button id="add-ex" class="btn primary">Adicionar</button>
-      </div>
-      <div class="list" id="ex-list"></div>
-
-      <hr style="opacity:0.05;margin:12px 0">
-      <h2>Atribuir exercícios por round</h2>
-      <div class="muted" style="font-size:13px">Personalize duração do round e do bloco pós-round (padrão / descanso / troca / nenhum)</div>
-      <div id="round-assigns" class="list"></div>
       <div style="display:flex;gap:8px;margin-top:8px">
-        <button id="apply-defaults" class="btn ghost">Aplicar padrão (sequência)</button>
-        <button id="clear-storage" class="btn">Resetar tudo</button>
+        <button id="applyAllRest" class="btn small">Aplicar descanso a todos</button>
+        <button id="clearAll" class="btn small">Limpar</button>
       </div>
-    </section>
 
-    <section class="panel">
-      <div class="timer-wrap">
-        <div class="card" style="background:linear-gradient(180deg,rgba(255,255,255,0.02),transparent);">
-          <div class="circle">
-            <svg width="320" height="320" viewBox="0 0 100 100">
-              <defs>
-                <linearGradient id="g1" x1="0" x2="1">
-                  <stop offset="0" stop-color="var(--accent1)"/>
-                  <stop offset="1" stop-color="var(--accent2)"/>
-                </linearGradient>
-              </defs>
-              <circle cx="50" cy="50" r="40" stroke="rgba(255,255,255,0.06)" stroke-width="6" fill="none"/>
-              <circle id="prog" cx="50" cy="50" r="40" stroke="url(#g1)" stroke-width="6" stroke-dasharray="0 251.2" stroke-linecap="round" fill="none"></circle>
-            </svg>
-            <div class="center">
-              <div class="phase" id="phase-name">Pronto</div>
-              <div class="big" id="time-left">00:00</div>
-              <div class="muted" id="round-info">Round 0 / 0</div>
-              <div class="meta" id="meta-chips"></div>
-              <div class="controls">
-                <button id="back" class="btn">⟲</button>
-                <button id="start" class="btn primary">Iniciar</button>
-                <button id="pause" class="btn">Pausar</button>
-                <button id="reset" class="btn">Reiniciar</button>
-                <button id="forward" class="btn">⟳</button>
-              </div>
-            </div>
-          </div>
-        </div>
+      <div class="meta">Dica: edite nome e duração de cada round. As alterações são salvas automaticamente.</div>
+    </div>
 
-        <div class="card" style="padding:18px;"> 
-          <div style="width:100%">
-            <h2>Próximo bloco</h2>
-            <div id="next-block" class="muted">—</div>
-          </div>
-          <div style="height:12px"></div>
-          <h2>Controles rápidos</h2>
-          <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
-            <button id="skip-to-rest" class="btn">Ir para Descanso</button>
-            <button id="skip-to-switch" class="btn">Ir para Troca</button>
-            <button id="skip-to-end" class="btn">Encerramento</button>
-          </div>
-
-          <div style="height:12px"></div>
-          <h2>Configuração rápida por round</h2>
-          <div class="muted" style="font-size:13px">Altere duração de um round diretamente aqui</div>
-          <div id="quick-rounds" style="margin-top:8px"></div>
+    <div class="panel timer">
+      <div class="ring">
+        <svg width="220" height="220" viewBox="0 0 100 100">
+          <defs>
+            <linearGradient id="grad" x1="0" x2="1">
+              <stop offset="0" stop-color="#9b59ff" />
+              <stop offset="1" stop-color="#8a2be2" />
+            </linearGradient>
+          </defs>
+          <circle cx="50" cy="50" r="40" stroke="rgba(255,255,255,0.06)" stroke-width="6" fill="none" />
+          <circle id="prog" cx="50" cy="50" r="40" stroke="url(#grad)" stroke-width="6" stroke-linecap="round" stroke-dasharray="0 251.2" fill="none"></circle>
+        </svg>
+        <div class="center">
+          <div class="phase" id="phaseName">Pronto</div>
+          <div class="time" id="timeLeft">00:00</div>
         </div>
       </div>
-    </section>
-  </main>
 
-  <footer>Design: tema escuro azul/roxo/amarelo • Funcionamento offline • MMA House</footer>
+      <div class="controls">
+        <button id="prev" class="btn">◀</button>
+        <button id="start" class="btn primary">Iniciar</button>
+        <button id="pause" class="btn">Pausar</button>
+        <button id="next" class="btn">▶</button>
+        <button id="reset" class="btn">Reiniciar</button>
+      </div>
+
+      <div class="meta" id="info">Round 0 / 0 • Total: 00:00</div>
+    </div>
+  </div>
 
 <script>
-// Estado e persistência
-const LS_KEY = 'mmahouse.timer.v1';
-let store = {
-  cfg: {
-    name: 'MMA House', warmup:60, rounds:5, roundDuration:180, rest:60, switchEvery:2, switchDuration:30, end:60
-  },
-  strikes: ['Jab','Direto','Cross','Uppercut','Chute frontal'],
-  exercises: [ {name:'Sombra', strikes:['Jab','Direto']}, {name:'Pad work', strikes:['Cross','Uppercut']}, {name:'Sparring Leve', strikes:['Jab','Chute frontal']} ],
-  roundAssigns: [], // {exerciseIndex, duration, postType:'default'|'rest'|'switch'|'none', postDuration}
-  runtime:{},
+const LS='mma.simple.timer.v1';
+let store = {warmup:30,rest:60,end:60,rounds:[{name:'Round 1',dur:60},{name:'Round 2',dur:60}]};
+function load(){try{const s=localStorage.getItem(LS); if(s) store=JSON.parse(s);}catch(e){} updateUI();}
+function save(){localStorage.setItem(LS,JSON.stringify(store)); updateUI();}
+
+const els={warmup:1,rest:1,end:1,rounds:1,newName:1,newDur:1};
+els.warmup = document.getElementById('warmup'); els.rest = document.getElementById('rest'); els.end = document.getElementById('end'); els.rounds = document.getElementById('rounds'); els.newName = document.getElementById('newName'); els.newDur = document.getElementById('newDur');
+const startBtn=document.getElementById('start'); const pauseBtn=document.getElementById('pause'); const resetBtn=document.getElementById('reset'); const prevBtn=document.getElementById('prev'); const nextBtn=document.getElementById('next'); const timeLeftEl=document.getElementById('timeLeft'); const phaseNameEl=document.getElementById('phaseName'); const infoEl=document.getElementById('info'); const progEl = document.getElementById('prog');
+
+function renderRounds(){els.rounds.innerHTML=''; store.rounds.forEach((r,i)=>{
+  const div=document.createElement('div'); div.className='round';
+  div.innerHTML = `<div class="name"><input data-i="${i}" class="rname" value="${escapeHtml(r.name)}" style="background:transparent;border:0;color:var(--fg)"></div><input data-i="${i}" class="rdur" type="number" value="${r.dur}" min="1"><button data-i="${i}" class="btn small del">✖</button>`;
+  els.rounds.appendChild(div);
+});}
+function escapeHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+els.warmup.addEventListener('input',()=>{store.warmup=Math.max(0,parseInt(els.warmup.value)||0); save();});
+els.rest.addEventListener('input',()=>{store.rest=Math.max(0,parseInt(els.rest.value)||0); save();});
+els.end.addEventListener('input',()=>{store.end=Math.max(0,parseInt(els.end.value)||0); save();});
+
+document.getElementById('addRound').addEventListener('click',()=>{const n=els.newName.value.trim()||(`Round ${store.rounds.length+1}`); const d=Math.max(1,parseInt(els.newDur.value)||60); store.rounds.push({name:n,dur:d}); save(); renderRounds();});
+
+els.rounds.addEventListener('input',e=>{const t=e.target; const i=Number(t.dataset.i); if(t.classList.contains('rname')){store.rounds[i].name = t.value; save();} if(t.classList.contains('rdur')){store.rounds[i].dur = Math.max(1,parseInt(t.value)||1); save();}});
+els.rounds.addEventListener('click',e=>{const b=e.target.closest('button.del'); if(!b) return; const i=Number(b.dataset.i); store.rounds.splice(i,1); save(); renderRounds();});
+
+document.getElementById('applyAllRest').addEventListener('click',()=>{ if(!confirm('Aplicar descanso padrão para todos os rounds?')) return; store.rounds.forEach(r=>r.postRest = store.rest); save(); alert('Aplicado');});
+
+document.getElementById('clearAll').addEventListener('click',()=>{ if(!confirm('Limpar tudo e restaurar padrão?')) return; store = {warmup:30,rest:60,end:60,rounds:[{name:'Round 1',dur:60},{name:'Round 2',dur:60}]}; save(); renderRounds(); });
+
+// audio
+function playTone(freq,duration,ctx){ try{ ctx = ctx || new (window.AudioContext || window.webkitAudioContext)(); const o = ctx.createOscillator(); const g = ctx.createGain(); o.type='sine'; o.frequency.value = freq; o.connect(g); g.connect(ctx.destination); g.gain.setValueAtTime(0.0001, ctx.currentTime); g.gain.exponentialRampToValueAtTime(0.15, ctx.currentTime + 0.01); o.start(); g.gain.exponentialRampToValueAtTime(0.00001, ctx.currentTime + duration); o.stop(ctx.currentTime + duration + 0.02); }catch(e){/* ignore */} }
+function playBeep(kind){ if(kind==='start') playTone(880,0.25); else if(kind==='next') { playTone(1200,0.18); setTimeout(()=>playTone(800,0.12),120); } else playTone(640,0.18); }
+
+// timer engine
+let seq = []; let idx=0; let phase='idle'; let remaining=0; let running=false; let raf=0; let last=0;
+function buildSeq(){ seq=[]; if(store.warmup>0) seq.push({type:'Aquecimento',dur:store.warmup}); store.rounds.forEach((r,i)=>{ seq.push({type:r.name,dur:r.dur}); if(i<store.rounds.length-1) seq.push({type:'Descanso',dur: (r.postRest!==undefined? r.postRest : store.rest)}); }); seq.push({type:'Encerramento',dur:store.end}); }
+function start(){ if(running) return; if(seq.length===0) buildSeq(); if(phase==='idle'){ idx=0; remaining = seq[0].dur; phase=seq[0].type; playBeep('start'); } running=true; last=performance.now(); tick();}
+function pause(){ running=false; if(raf) cancelAnimationFrame(raf); raf=0;}
+function reset(){ pause(); buildSeq(); idx=0; phase='idle'; remaining=0; updateDisplay();}
+function next(){ if(seq.length===0) buildSeq(); remaining=0; }
+function prev(){ if(seq.length===0) buildSeq(); idx = Math.max(0, idx-1); remaining = seq[idx]?.dur || 0; phase = seq[idx]?.type || 'idle'; playBeep('next'); updateDisplay(); }
+
+function tick(ts){ if(!running) return; const dt=(ts-last)/1000; last=ts; remaining -= dt; if(remaining<=0){ idx++; if(idx>=seq.length){ running=false; phase='Pronto'; remaining=0; updateDisplay(); playBeep('end'); return;} phase = seq[idx].type; remaining = seq[idx].dur; playBeep('next'); }
+ updateDisplay(); raf = requestAnimationFrame(tick);} 
+
+function formatTime(s){ s=Math.max(0,Math.round(s)); const m=Math.floor(s/60); const ss=s%60; return `${String(m).padStart(2,'0')}:${String(ss).padStart(2,'0')}` }
+
+function updateDisplay(){ if(phase==='idle' && seq.length>0){ phase = seq[idx]?.type || 'Pronto'; remaining = seq[idx]?.dur || 0; }
+ phaseNameEl.textContent = phase || 'Pronto'; timeLeftEl.textContent = formatTime(remaining); infoEl.textContent = `Bloco ${idx+1} / ${seq.length} • Total: ${formatTime(totalDuration())}`;
+ // progress ring update
+ const totalForPhase = (seq[idx] && seq[idx].dur) ? seq[idx].dur : 1; const pct = totalForPhase>0 ? (Math.max(0,remaining)/totalForPhase) : 0; const circumference = 2*Math.PI*40; const dash = (circumference * pct).toFixed(2); progEl.setAttribute('stroke-dasharray', `${dash} ${circumference}`);
 }
 
-function load(){
-  try{const s = localStorage.getItem(LS_KEY); if(s) Object.assign(store, JSON.parse(s)); }
-  catch(e){console.warn(e)}
-  ensureRoundAssigns();
-}
-function save(){ localStorage.setItem(LS_KEY, JSON.stringify(store)); }
+function totalDuration(){ buildSeq(); return seq.reduce((a,b)=>a+(b.dur||0),0); }
 
-function ensureRoundAssigns(){
-  const n = store.cfg.rounds || 1;
-  while(store.roundAssigns.length < n) store.roundAssigns.push({exerciseIndex:0,duration:store.cfg.roundDuration, postType:'default', postDuration:store.cfg.rest});
-  if(store.roundAssigns.length > n) store.roundAssigns.splice(n);
-}
-
-// UI refs
-const els = {
-  cfgWarmup: document.getElementById('cfg-warmup'), cfgRounds: document.getElementById('cfg-rounds'), cfgRoundDuration: document.getElementById('cfg-round-duration'), cfgRest: document.getElementById('cfg-rest'), cfgSwitchEvery: document.getElementById('cfg-switch-every'), cfgSwitchDuration: document.getElementById('cfg-switch-duration'), cfgEnd: document.getElementById('cfg-end'), cfgName: document.getElementById('cfg-name'), totalDuration: document.getElementById('total-duration'), strikesList: document.getElementById('strikes-list'), exList: document.getElementById('ex-list'), addStrike: document.getElementById('add-strike'), newStrike: document.getElementById('new-strike'), addEx: document.getElementById('add-ex'), newEx: document.getElementById('new-ex'), roundAssigns: document.getElementById('round-assigns'), applyDefaults: document.getElementById('apply-defaults'), clearStorage: document.getElementById('clear-storage'), phaseName: document.getElementById('phase-name'), timeLeft: document.getElementById('time-left'), roundInfo: document.getElementById('round-info'), metaChips: document.getElementById('meta-chips'), prog: document.getElementById('prog'), startBtn: document.getElementById('start'), pauseBtn: document.getElementById('pause'), resetBtn: document.getElementById('reset'), backBtn: document.getElementById('back'), forwardBtn: document.getElementById('forward'), nextBlock: document.getElementById('next-block'), quickRounds: document.getElementById('quick-rounds'), skipRest: document.getElementById('skip-to-rest'), skipSwitch: document.getElementById('skip-to-switch'), skipEnd: document.getElementById('skip-to-end')
-}
-
-// Helpers
-function fmt(s){ s = Math.max(0, Math.round(s)); const mm = Math.floor(s/60); const ss = s%60; return `${String(mm).padStart(2,'0')}:${String(ss).padStart(2,'0')}` }
-
-function computeTotal(){
-  const c = store.cfg; const rounds = c.rounds; let total = c.warmup + c.end;
-  for(let i=0;i<rounds;i++){
-    total += (store.roundAssigns[i]?.duration || c.roundDuration);
-    if(i<rounds-1){
-      const post = store.roundAssigns[i]?.postType || 'default';
-      if(post==='default'){
-        if(c.switchEvery>0 && ((i+1)%c.switchEvery===0)) total += c.switchDuration; else total += c.rest;
-      } else if(post==='rest'){ total += (store.roundAssigns[i].postDuration || c.rest); }
-      else if(post==='switch'){ total += (store.roundAssigns[i].postDuration || c.switchDuration); }
-      else if(post==='none'){ /* nothing */ }
-    }
-  }
-  return total;
-}
-
-function updateTotalUI(){ els.totalDuration.textContent = fmt(computeTotal()); }
-
-// render lists
-function renderStrikes(){ els.strikesList.innerHTML=''; store.strikes.forEach((s,i)=>{
-  const div = document.createElement('div'); div.className='item'; div.innerHTML = `<div class="name">${escapeHtml(s)}</div><div style="display:flex;gap:8px"><button class="btn" data-i="${i}" data-act="edit">✎</button><button class="btn" data-i="${i}" data-act="del">✖</button></div>`;
-  els.strikesList.appendChild(div);
-}); }
-
-function renderExercises(){ els.exList.innerHTML=''; store.exercises.forEach((ex,i)=>{
-  const strikes = ex.strikes?.join(', ') || '';
-  const div = document.createElement('div'); div.className='item'; div.innerHTML = `<div style="flex:1"><div class="name">${escapeHtml(ex.name)}</div><div class="muted" style="font-size:12px">${escapeHtml(strikes)}</div></div><div style="display:flex;gap:8px"><button class="btn" data-i="${i}" data-act="editEx">✎</button><button class="btn" data-i="${i}" data-act="delEx">✖</button></div>`;
-  els.exList.appendChild(div);
-}); }
-
-function renderRoundAssigns(){ els.roundAssigns.innerHTML=''; store.roundAssigns.forEach((r,i)=>{
-  const div = document.createElement('div'); div.className='item';
-  const exOptions = store.exercises.map((ex,idx)=>`<option value="${idx}" ${idx===r.exerciseIndex?'selected':''}>${escapeHtml(ex.name)}</option>`).join('');
-  const postType = r.postType || 'default';
-  div.innerHTML = `<div style="flex:1"><div class="muted">Round ${i+1}</div><div style="display:flex;gap:8px;margin-top:6px;align-items:center"><select data-i="${i}" class="round-ex">${exOptions}</select><input data-i="${i}" type="number" value="${r.duration}" class="small" style="width:110px"/><label style="font-size:12px;color:var(--muted);margin-left:6px">Pós:</label><select data-i="${i}" class="post-type"><option value="default" ${postType==='default'?'selected':''}>Padrão</option><option value="rest" ${postType==='rest'?'selected':''}>Descanso</option><option value="switch" ${postType==='switch'?'selected':''}>Troca</option><option value="none" ${postType==='none'?'selected':''}>Nenhum</option></select><input data-i="${i}" type="number" value="${r.postDuration||''}" class="small post-duration" placeholder="seg" style="width:90px;${postType==='default'?'display:none;':''}"/></div></div><div style="display:flex;flex-direction:column;gap:6px;margin-left:8px"><button class="btn" data-i="${i}" data-act="up">▲</button><button class="btn" data-i="${i}" data-act="down">▼</button></div>`;
-  els.roundAssigns.appendChild(div);
-}); }
-
-function renderQuickRounds(){ els.quickRounds.innerHTML=''; store.roundAssigns.forEach((r,i)=>{
-  const exName = store.exercises[r.exerciseIndex]?.name||'—';
-  const post = r.postType||'default';
-  const postLabel = post==='default'?'(padrão)':post==='rest'?'(desc)':'(troca)';
-  const div = document.createElement('div'); div.className='item'; div.innerHTML=`<div style="flex:1"><div class="name">Round ${i+1} — ${escapeHtml(exName)} ${post!=='none'?postLabel:''}</div><input type="number" data-i="${i}" value="${r.duration}" style="width:120px;margin-top:6px"/></div>`; els.quickRounds.appendChild(div);
-}); }
-
-// escape helper
-function escapeHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-
-// bind events
-function bind(){
-  ['cfg-warmup','cfg-rounds','cfg-round-duration','cfg-rest','cfg-switch-every','cfg-switch-duration','cfg-end','cfg-name'].forEach(id=>{
-    document.getElementById(id).addEventListener('input', onCfgChange);
-  });
-  document.getElementById('add-strike').addEventListener('click', ()=>{ const v=document.getElementById('new-strike').value.trim(); if(!v) return; store.strikes.push(v); document.getElementById('new-strike').value=''; save(); renderStrikes(); });
-  document.getElementById('add-ex').addEventListener('click', ()=>{ const v=document.getElementById('new-ex').value.trim(); if(!v) return; store.exercises.push({name:v,strikes:[]}); document.getElementById('new-ex').value=''; save(); renderExercises(); renderRoundAssigns(); renderQuickRounds(); updateMetaChips(); });
-
-  els.strikesList.addEventListener('click', e=>{ const b=e.target.closest('button'); if(!b) return; const i=+b.dataset.i; const act=b.dataset.act; if(act==='del'){ store.strikes.splice(i,1); store.exercises.forEach(ex=>ex.strikes = (ex.strikes||[]).filter(s=>store.strikes.includes(s))); save(); renderStrikes(); renderExercises(); } if(act==='edit'){ const name = prompt('Editar golpe', store.strikes[i]); if(name){ store.strikes[i]=name; save(); renderStrikes(); renderExercises(); } } });
-
-  els.exList.addEventListener('click', e=>{ const b=e.target.closest('button'); if(!b) return; const i=+b.dataset.i; const act=b.dataset.act; if(act==='delEx'){ if(!confirm('Remover exercício?')) return; store.exercises.splice(i,1); store.roundAssigns.forEach(r=>{ if(r.exerciseIndex>=store.exercises.length) r.exerciseIndex=0 }); save(); renderExercises(); renderRoundAssigns(); renderQuickRounds(); updateMetaChips(); } if(act==='editEx'){ editExercise(i); } });
-
-  els.roundAssigns.addEventListener('change', e=>{
-    const sel = e.target.closest('select.round-ex'); if(sel){ const i=+sel.dataset.i; store.roundAssigns[i].exerciseIndex = +sel.value; save(); renderQuickRounds(); updateMetaChips(); }
-    const postSel = e.target.closest('select.post-type'); if(postSel){ const i=+postSel.dataset.i; store.roundAssigns[i].postType = postSel.value; // toggle visibility of post-duration input
-      const input = document.querySelector(`input.post-duration[data-i='${i}']`);
-      if(input) input.style.display = (postSel.value==='default' || postSel.value==='none') ? 'none' : 'inline-block'; save(); updateTotalUI(); }
-    const num = e.target.closest('input[type=number]'); if(num && num.dataset.i!==undefined){ const i=+num.dataset.i; if(num.classList.contains('post-duration')){ store.roundAssigns[i].postDuration = Math.max(0, +num.value || 0); } else { store.roundAssigns[i].duration = Math.max(1, +num.value); } save(); renderQuickRounds(); updateTotalUI(); }
-  });
-
-  els.roundAssigns.addEventListener('click', e=>{ const b=e.target.closest('button'); if(!b) return; const i=+b.dataset.i; const act=b.dataset.act; if(act==='up' && i>0){ const t=store.roundAssigns[i-1]; store.roundAssigns[i-1]=store.roundAssigns[i]; store.roundAssigns[i]=t; save(); renderRoundAssigns(); renderQuickRounds(); } if(act==='down' && i<store.roundAssigns.length-1){ const t=store.roundAssigns[i+1]; store.roundAssigns[i+1]=store.roundAssigns[i]; store.roundAssigns[i]=t; save(); renderRoundAssigns(); renderQuickRounds(); } });
-
-  els.applyDefaults.addEventListener('click', ()=>{ store.roundAssigns = []; ensureRoundAssigns(); for(let i=0;i<store.cfg.rounds;i++){ store.roundAssigns[i].exerciseIndex = i % store.exercises.length; store.roundAssigns[i].duration = store.cfg.roundDuration; store.roundAssigns[i].postType = 'default'; store.roundAssigns[i].postDuration = store.cfg.rest; } save(); renderRoundAssigns(); renderQuickRounds(); updateTotalUI(); });
-
-  els.clearStorage.addEventListener('click', ()=>{ if(!confirm('Apagar configuração salva e retornar ao padrão?')) return; localStorage.removeItem(LS_KEY); location.reload(); });
-
-  els.quickRounds.addEventListener('input', e=>{ const inp = e.target; if(inp && inp.dataset && inp.dataset.i!==undefined){ const i=+inp.dataset.i; store.roundAssigns[i].duration = Math.max(1, +inp.value); save(); renderRoundAssigns(); updateTotalUI(); }});
-
-  els.startBtn.addEventListener('click', ()=>timer.start()); els.pauseBtn.addEventListener('click', ()=>timer.pause()); els.resetBtn.addEventListener('click', ()=>timer.reset()); els.backBtn.addEventListener('click', ()=>timer.prev()); els.forwardBtn.addEventListener('click', ()=>timer.next()); els.skipRest.addEventListener('click', ()=>timer.skipTo('rest')); els.skipSwitch.addEventListener('click', ()=>timer.skipTo('switch')); els.skipEnd.addEventListener('click', ()=>timer.skipTo('end'));
-}
-
-function editExercise(i){ const ex = store.exercises[i]; const name = prompt('Nome do exercício', ex.name); if(name===null) return; ex.name = name.trim() || ex.name; const available = store.strikes; const res = prompt('Marque golpes separados por vírgula (nome exato)\nDisponíveis: '+available.join(', '), ex.strikes.join(', ')); if(res!==null){ ex.strikes = res.split(',').map(x=>x.trim()).filter(Boolean); save(); renderExercises(); renderRoundAssigns(); renderQuickRounds(); updateMetaChips(); } }
-
-// Timer engine
-const timer = (function(){
-  let state = {running:false,phase:'idle',roundIndex:0,phaseRemaining:0};
-  let tickId = null; let lastTs = null;
-
-  function initFromStore(){ state = {running:false,phase:'idle',roundIndex:0,phaseRemaining:0}; updateUI(); }
-
-  function start(){ if(state.running) return; if(state.phase==='idle') beginSequence(); state.running=true; lastTs = performance.now(); tickId = requestAnimationFrame(tick); }
-  function pause(){ state.running=false; if(tickId){ cancelAnimationFrame(tickId); tickId=null; } updateUI(); }
-  function reset(){ pause(); initFromStore(); }
-
-  function beginSequence(){ if(store.cfg.warmup>0){ state.phase='warmup'; state.phaseRemaining = store.cfg.warmup; state.roundIndex=0; } else { state.phase='round'; state.roundIndex=0; state.phaseRemaining = store.roundAssigns[0]?.duration || store.cfg.roundDuration; } playBeep(); updateUI(); }
-
-  function tick(ts){ if(!state.running) return; const dt = (ts - lastTs)/1000; lastTs = ts; state.phaseRemaining -= dt; if(state.phaseRemaining <= 0){ advancePhase(); } updateUI(); tickId = requestAnimationFrame(tick); }
-
-  function advancePhase(){ const c = store.cfg; if(state.phase==='warmup'){ state.phase = 'round'; state.roundIndex = 0; state.phaseRemaining = store.roundAssigns[0]?.duration || c.roundDuration; }
-    else if(state.phase==='round'){
-      if(state.roundIndex >= c.rounds-1){ state.phase='end'; state.phaseRemaining = c.end; }
-      else {
-        // decide post action for this round
-        const post = store.roundAssigns[state.roundIndex]?.postType || 'default';
-        if(post==='default'){
-          if(c.switchEvery>0 && ((state.roundIndex+1) % c.switchEvery === 0)){
-            state.phase='switch'; state.phaseRemaining = c.switchDuration;
-          } else { state.phase='rest'; state.phaseRemaining = c.rest; }
-        } else if(post==='rest'){
-          state.phase='rest'; state.phaseRemaining = store.roundAssigns[state.roundIndex].postDuration || c.rest;
-        } else if(post==='switch'){
-          state.phase='switch'; state.phaseRemaining = store.roundAssigns[state.roundIndex].postDuration || c.switchDuration;
-        } else if(post==='none'){
-          // skip to next round immediately
-          state.roundIndex = Math.min(c.rounds-1, state.roundIndex+1);
-          state.phase='round'; state.phaseRemaining = store.roundAssigns[state.roundIndex]?.duration || c.roundDuration;
-        }
-      }
-    }
-    else if(state.phase==='rest' || state.phase==='switch'){
-      state.roundIndex = Math.min(c.rounds-1, state.roundIndex+1);
-      state.phase='round'; state.phaseRemaining = store.roundAssigns[state.roundIndex]?.duration || c.roundDuration;
-    }
-    else if(state.phase==='end'){ state.phase='idle'; state.running=false; }
-    playBeep(); updateUI(); if(!state.running && tickId){ cancelAnimationFrame(tickId); tickId=null; }
-  }
-
-  function next(){ if(state.phase==='idle'){ beginSequence(); return; } state.phaseRemaining = 0; if(state.running) lastTs = performance.now(); }
-  function prev(){ const c=store.cfg; if(state.phase==='idle'){ initFromStore(); return; } if(state.phase==='warmup'){ state.phaseRemaining = Math.min(state.phaseRemaining, store.cfg.warmup); }
-    else if(state.phase==='round'){ if(state.roundIndex>0){ state.roundIndex--; state.phase='round'; state.phaseRemaining = store.roundAssigns[state.roundIndex]?.duration || c.roundDuration; } else { if(c.warmup>0){ state.phase='warmup'; state.phaseRemaining = c.warmup; } else { state.phase='round'; state.phaseRemaining = store.roundAssigns[0]?.duration || c.roundDuration; } } }
-    else if(state.phase==='rest'){ state.phase='round'; state.phaseRemaining = store.roundAssigns[state.roundIndex]?.duration || c.roundDuration; }
-    else if(state.phase==='switch'){ state.phase='round'; state.phaseRemaining = store.roundAssigns[state.roundIndex]?.duration || c.roundDuration; }
-    else if(state.phase==='end'){ state.phase = c.rounds>0 ? 'round' : 'idle'; state.phaseRemaining = store.roundAssigns[state.roundIndex]?.duration || c.roundDuration; }
-    playBeep(); updateUI(); }
-
-  function skipTo(which){ if(which==='rest'){ state.phase='rest'; state.phaseRemaining = store.cfg.rest; } else if(which==='switch'){ state.phase='switch'; state.phaseRemaining = store.cfg.switchDuration; } else if(which==='end'){ state.phase='end'; state.phaseRemaining = store.cfg.end; } playBeep(); updateUI(); }
-
-  function playBeep(){ try{ const ctx = new (window.AudioContext || window.webkitAudioContext)(); const o = ctx.createOscillator(); const g = ctx.createGain(); o.type='sine'; o.frequency.value = 880; g.gain.value = 0.0001; o.connect(g); g.connect(ctx.destination); o.start(); g.gain.exponentialRampToValueAtTime(0.2, ctx.currentTime + 0.01); g.gain.exponentialRampToValueAtTime(0.00001, ctx.currentTime + 0.5); o.stop(ctx.currentTime + 0.6); }catch(e){ console.log('no audio'); } }
-
-  function getState(){ return state; }
-
-  return {start,pause,reset,next,prev,initFromStore,getState,skipTo};
-})();
-
-function updateUI(){ const s = timer.getState(); const c = store.cfg; const labels = {idle:'Pronto', warmup:'Aquecimento', round:'Round', rest:'Descanso', switch:'Troca', end:'Encerramento'};
-  const p = s.phase==='idle' ? 'idle' : s.phase; els.phaseName.textContent = labels[p] || p; els.timeLeft.textContent = fmt(Math.ceil(s.phaseRemaining || 0));
-
-  const total = (()=>{ if(s.phase==='warmup') return c.warmup; if(s.phase==='round') return store.roundAssigns[s.roundIndex]?.duration || c.roundDuration; if(s.phase==='rest') return s.phaseRemaining>0? (store.roundAssigns[Math.max(0,s.roundIndex)]?.postType==='rest' ? (store.roundAssigns[Math.max(0,s.roundIndex)].postDuration || c.rest) : c.rest) : c.rest; if(s.phase==='switch') return s.phaseRemaining>0? (store.roundAssigns[Math.max(0,s.roundIndex)]?.postType==='switch' ? (store.roundAssigns[Math.max(0,s.roundIndex)].postDuration || c.switchDuration) : c.switchDuration) : c.switchDuration; if(s.phase==='end') return c.end; return 1; })();
-  const rem = Math.max(0, s.phaseRemaining || 0); const pct = total>0 ? (rem/total) : 0; const circumference = 2*Math.PI*40; const dash = (circumference * pct).toFixed(2); els.prog.setAttribute('stroke-dasharray', `${dash} ${circumference}`);
-
-  const rounds = c.rounds || 0; const rIndex = s.roundIndex || 0; els.roundInfo.textContent = s.phase==='idle' ? `Round 0 / ${rounds}` : `Round ${Math.min(rIndex+1, rounds)} / ${rounds}`;
-  updateMetaChips(); const nextText = computeNextText(s); els.nextBlock.textContent = nextText;
-  els.startBtn.disabled = s.running; els.pauseBtn.disabled = !s.running;
-}
-
-function updateMetaChips(){ const s = timer.getState(); els.metaChips.innerHTML=''; if(s.phase==='round'){ const ex = store.exercises[s.roundIndex]||{}; const exName = ex.name || '—'; const chip1 = document.createElement('div'); chip1.className='chip'; chip1.textContent = `Exercício: ${exName}`; els.metaChips.appendChild(chip1); const chip2 = document.createElement('div'); chip2.className='chip'; chip2.textContent = `Golpes: ${ (ex && ex.strikes && ex.strikes.length) ? ex.strikes.join(', ') : '—' }`; els.metaChips.appendChild(chip2); } else { const chip = document.createElement('div'); chip.className='chip'; chip.textContent = (store.cfg.name || 'Treino') ; els.metaChips.appendChild(chip); } }
-
-function computeNextText(s){ const c=store.cfg; if(s.phase==='idle') return 'Pronto para iniciar'; if(s.phase==='warmup') return `Round 1 — ${store.exercises[0]?.name||'—'}`; if(s.phase==='round'){ if(s.roundIndex >= c.rounds-1) return 'Encerramento'; const post = store.roundAssigns[s.roundIndex]?.postType || 'default'; if(post==='default'){ if(c.switchEvery>0 && ((s.roundIndex+1)%c.switchEvery===0)) return `Troca → ${store.exercises[(s.roundIndex+1)%store.exercises.length]?.name||'—'}`; return `Descanso → Round ${s.roundIndex+2}`; } if(post==='rest') return `Descanso → Round ${s.roundIndex+2}`; if(post==='switch') return `Troca → ${store.exercises[(s.roundIndex+1)%store.exercises.length]?.name||'—'}`; if(post==='none') return `Round ${s.roundIndex+2}`; }
-  if(s.phase==='rest') return `Round ${s.roundIndex+2} — ${store.exercises[(s.roundIndex+1)%store.exercises.length]?.name||'—'}`; if(s.phase==='switch') return `Round ${s.roundIndex+2} — ${store.exercises[(s.roundIndex+1)%store.exercises.length]?.name||'—'}`; if(s.phase==='end') return 'Fim do treino'; return '—'; }
-
-function onCfgChange(){ store.cfg.warmup = Math.max(0, +els.cfgWarmup.value||0); store.cfg.rounds = Math.max(1, +els.cfgRounds.value||1); store.cfg.roundDuration = Math.max(1, +els.cfgRoundDuration.value||1); store.cfg.rest = Math.max(0, +els.cfgRest.value||0); store.cfg.switchEvery = Math.max(0, +els.cfgSwitchEvery.value||0); store.cfg.switchDuration = Math.max(0, +els.cfgSwitchDuration.value||0); store.cfg.end = Math.max(0, +els.cfgEnd.value||0); store.cfg.name = els.cfgName.value||'MMA House'; ensureRoundAssigns(); save(); renderRoundAssigns(); renderQuickRounds(); updateTotalUI(); }
+startBtn.addEventListener('click',start); pauseBtn.addEventListener('click',pause); resetBtn.addEventListener('click',reset); prevBtn.addEventListener('click',prev); nextBtn.addEventListener('click',next);
 
 // init
-load(); els.cfgWarmup.value = store.cfg.warmup; els.cfgRounds.value = store.cfg.rounds; els.cfgRoundDuration.value = store.cfg.roundDuration; els.cfgRest.value = store.cfg.rest; document.getElementById('cfg-switch-every').value = store.cfg.switchEvery; document.getElementById('cfg-switch-duration').value = store.cfg.switchDuration; els.cfgEnd.value = store.cfg.end; els.cfgName.value = store.cfg.name;
+load(); renderRounds(); buildSeq(); updateDisplay();
 
-renderStrikes(); renderExercises(); renderRoundAssigns(); renderQuickRounds(); updateTotalUI(); bind(); timer.initFromStore(); updateUI();
-
-setInterval(()=>{ save(); }, 2000);
-
-document.addEventListener('keydown', (e)=>{ if(e.code==='Space'){ e.preventDefault(); const s = timer.getState(); if(s.running) timer.pause(); else timer.start(); } if(e.key==='ArrowRight') timer.next(); if(e.key==='ArrowLeft') timer.prev(); });
+// autosave on unload
+window.addEventListener('beforeunload', save);
 </script>
 </body>
 </html>
