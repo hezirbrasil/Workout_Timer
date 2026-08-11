@@ -196,10 +196,18 @@ function tick(ts){ if(!window.running) return; if(typeof ts === 'undefined') ts 
 
 function formatTime(s){ s=Math.max(0,Math.round(s)); const m=Math.floor(s/60); const ss=s%60; return `${String(m).padStart(2,'0')}:${String(ss).padStart(2,'0')}` }
 
-function updateDisplay(){ if(phase==='idle' && seq.length>0){ phase = seq[idx]?.type || 'Pronto'; remaining = seq[idx]?.dur || 0; }
- phaseNameEl.textContent = phase || 'Pronto'; timeLeftEl.textContent = formatTime(remaining); infoEl.textContent = `Bloco ${idx+1} / ${seq.length} • Total: ${formatTime(totalDuration())}`;
- // progress ring update
- const totalForPhase = (seq[idx] && seq[idx].dur) ? seq[idx].dur : 1; const pct = totalForPhase>0 ? (Math.max(0,remaining)/totalForPhase) : 0; const circumference = 2*Math.PI*40; const dash = (circumference * pct).toFixed(2); progEl.setAttribute('stroke-dasharray', `${dash} ${circumference}`);
+function updateDisplay(){ try{
+   if(phase==='idle' && seq.length>0){ phase = seq[idx]?.type || 'Pronto'; remaining = seq[idx]?.dur || 0; }
+   if(phaseNameEl) phaseNameEl.textContent = phase || 'Pronto';
+   if(timeLeftEl) timeLeftEl.textContent = formatTime(remaining);
+   if(infoEl) infoEl.textContent = `Bloco ${idx+1} / ${seq.length} • Total: ${formatTime(totalDuration())}`;
+   // progress ring update
+   const totalForPhase = (seq[idx] && seq[idx].dur) ? seq[idx].dur : 1;
+   const pct = totalForPhase>0 ? (Math.max(0,remaining)/totalForPhase) : 0;
+   const circumference = 2*Math.PI*40;
+   const dash = (circumference * pct).toFixed(2);
+   if(progEl && typeof progEl.setAttribute === 'function') progEl.setAttribute('stroke-dasharray', `${dash} ${circumference}`);
+ }catch(e){ console.error('updateDisplay error', e); }
 }
 
 // central update used by save/load
