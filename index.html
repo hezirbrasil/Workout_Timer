@@ -99,6 +99,8 @@
 <script>
 const LS='mma.simple.timer.v1';
 let store = {warmup:30,rest:60,end:60,rounds:[{name:'Round 1',dur:60},{name:'Round 2',dur:60}]};
+// runtime flag — declared early to avoid TDZ when updateUI/renderRounds runs before timer initialization
+var running = false;
 function load(){try{const s=localStorage.getItem(LS); if(s) store=JSON.parse(s);}catch(e){} updateUI();}
 function save(){localStorage.setItem(LS,JSON.stringify(store)); updateUI();}
 
@@ -180,7 +182,7 @@ function playTone(freq,duration,ctx){ try{ ctx = ctx || new (window.AudioContext
 function playBeep(kind){ if(kind==='start') playTone(880,0.25); else if(kind==='next') { playTone(1200,0.18); setTimeout(()=>playTone(800,0.12),120); } else playTone(640,0.18); }
 
 // timer engine
-let seq = []; let idx=0; let phase='idle'; let remaining=0; let running=false; let raf=0; let last=0;
+let seq = []; let idx=0; let phase='idle'; let remaining=0; let raf=0; let last=0;
 function buildSeq(){ seq = []; // use exactly the configured blocks in order
   store.rounds.forEach((r)=>{ seq.push({type: r.name || 'Bloco', dur: r.dur || 0}); }); }
 function start(){ if(running) return; if(seq.length===0) buildSeq(); if(phase==='idle'){ idx=0; remaining = seq[0].dur; phase=seq[0].type; playBeep('start'); } running=true; last=performance.now(); tick();}
