@@ -173,7 +173,7 @@ els.rounds.addEventListener('click', e => {
   }
 });
 
-document.getElementById('applyAllRest').addEventListener('click',()=>{ if(!confirm('Aplicar descanso padrão para todos os rounds?')) return; store.rounds.forEach(r=>r.postRest = store.rest); save(); alert('Aplicado');});
+const applyAllRestBtn = document.getElementById('applyAllRest'); if(applyAllRestBtn){ applyAllRestBtn.addEventListener('click', ()=>{ if(!confirm('Aplicar descanso padrão para todos os rounds?')) return; store.rounds.forEach(r=>r.postRest = store.rest); save(); alert('Aplicado'); }); }
 
 document.getElementById('clearAll').addEventListener('click',()=>{ if(!confirm('Limpar tudo e restaurar padrão?')) return; store = {warmup:30,rest:60,end:60,rounds:[{name:'Round 1',dur:60},{name:'Round 2',dur:60}]}; save(); renderRounds(); });
 
