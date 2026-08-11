@@ -126,14 +126,14 @@
       <hr style="opacity:0.05;margin:12px 0">
       <h2>Gerenciar golpes e exercícios</h2>
       <div style="display:flex;gap:8px;margin-bottom:8px">
-        <input id="new-strike" type="text" placeholder="Adicionar golpe (ex: Jab)">
+        <input id="new-strike" type="text" placeholder="Adicionar golpe / movimento (ex: Burpee)">
         <button id="add-strike" class="btn">Adicionar</button>
       </div>
       <div class="list" id="strikes-list"></div>
 
       <div style="height:12px"></div>
       <div style="display:flex;gap:8px;margin-bottom:8px">
-        <input id="new-ex" type="text" placeholder="Adicionar exercício (ex: Sombra)">
+        <input id="new-ex" type="text" placeholder="Adicionar exercício / bloco (ex: Circuito)">
         <button id="add-ex" class="btn primary">Adicionar</button>
       </div>
       <div class="list" id="ex-list"></div>
@@ -209,8 +209,8 @@ let store = {
   cfg: {
     name: 'MMA House', warmup:60, rounds:5, roundDuration:180, rest:60, switchEvery:2, switchDuration:30, end:60
   },
-  strikes: ['Jab','Direto','Cross','Uppercut','Chute frontal'],
-  exercises: [ {name:'Sombra', strikes:['Jab','Direto']}, {name:'Pad work', strikes:['Cross','Uppercut']}, {name:'Sparring Leve', strikes:['Jab','Chute frontal']} ],
+  strikes: ['Jab','Direto','Burpee','Agachamento','Flexão','Corrida no lugar'],
+  exercises: [ {name:'Sombra', strikes:['Jab','Direto']}, {name:'Circuito', strikes:['Burpee','Agachamento','Flexão']}, {name:'Cardio', strikes:['Corrida no lugar']} ],
   roundAssigns: [], // {exerciseIndex, duration, postType:'default'|'rest'|'switch'|'none', postDuration}
   runtime:{},
 }
