@@ -1,0 +1,25 @@
+{
+  "name": "Workout Timer",
+  "short_name": "Workout Timer",
+  "description": "Timer profissional e configurável para treinos, rounds e aulas coletivas.",
+  "start_url": "/Workout_Timer/",
+  "scope": "/Workout_Timer/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#000000",
+  "theme_color": "#8a2be2",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
