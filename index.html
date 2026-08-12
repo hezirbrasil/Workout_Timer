@@ -15,6 +15,43 @@ input{font:inherit}.top{display:flex;gap:8px;align-items:end}.field{flex:1}.fiel
 .clear{width:100%;margin-top:4px}.timer{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:500px}.ring{width:240px;height:240px;position:relative;display:flex;align-items:center;justify-content:center}.ring svg{transform:rotate(-90deg)}.center{position:absolute;text-align:center}.phase{font-size:15px;color:var(--muted);margin-bottom:5px}.time{font-size:58px;font-weight:700}.controls{margin-top:18px}.start{min-width:190px;font-size:18px}.info{margin-top:12px}.warn{margin-top:14px;display:flex;align-items:center;gap:8px}.warn input[type=number]{width:60px;padding:7px;background:#050505;border:1px solid #222;border-radius:7px;color:#fff}
 body.compact{padding:0;overflow:hidden}body.compact .wrap{display:block;width:100vw;height:100vh;max-width:none}body.compact .wrap>.panel:first-child{display:none}body.compact .timer{width:100vw;height:100vh;border:0;border-radius:0;padding:0}body.compact .controls,body.compact .warn,body.compact .info{display:none!important}body.compact .ring{width:min(88vw,88vh);height:min(88vw,88vh)}body.compact .ring svg{width:100%;height:100%}body.compact .time{font-size:clamp(64px,12vw,180px)}body.compact .phase{font-size:clamp(18px,3vw,32px)}
 @media(max-width:700px){body{padding:10px}.wrap{display:block}.timer{margin-top:10px;min-height:330px}.top{display:block}.time-fields{margin-top:8px}.round{grid-template-columns:1fr 64px 64px}.round-actions{grid-template-columns:1fr 1fr 1fr}.btn{min-height:44px}.short{min-height:44px}.time{font-size:44px}.ring{width:190px;height:190px}}
+
+
+/* MOBILE CONFIG UI */
+@media (max-width: 600px) {
+  html, body { min-height: 100%; }
+  .wrap { display:block; width:100%; max-width:none; margin:0; padding:10px; }
+  .wrap > .panel:first-child { padding:14px; border-radius:14px; }
+  .wrap > .panel.timer { margin-top:10px; padding:14px; border-radius:14px; }
+  .panel h1 { font-size:22px; }
+  .panel:first-child > div:first-of-type { font-size:14px !important; }
+  #newName { min-height:48px; font-size:16px; padding:12px !important; }
+  #newMin, #newSec { width:82px !important; min-height:48px; font-size:18px; text-align:center; }
+  #addRound { min-height:48px; padding:12px 18px; font-size:16px; }
+  .shortcut { min-height:44px; min-width:0; flex:1 1 calc(50% - 6px); font-size:14px; }
+  .round { display:grid; grid-template-columns:1fr 68px 68px; gap:8px; padding:12px; align-items:center; }
+  .round .name { grid-column:1 / -1; }
+  .round .name input { width:100% !important; min-height:44px; font-size:16px !important; }
+  .round input.rmin, .round input.rsec { width:68px !important; min-height:44px; font-size:16px; text-align:center; }
+  .round > div:last-child { grid-column:1 / -1; display:flex; gap:8px !important; }
+  .round > div:last-child .btn { flex:1; min-height:44px; }
+  #clearAll { min-height:46px; width:100%; font-size:16px; }
+  .list { max-height:none; overflow:visible; }
+  .warn-area { flex-wrap:wrap; }
+  .warn-area input[type=number] { min-height:44px; font-size:16px; }
+  body:not(.compact) .timer { display:flex; }
+  body:not(.compact) .timer .ring { width:180px; height:180px; }
+  body:not(.compact) .timer .ring svg { width:180px; height:180px; }
+  body:not(.compact) .timer .time { font-size:42px; }
+  body:not(.compact) .timer .phase { font-size:13px; }
+  body:not(.compact) .timer .controls #start { min-height:54px; min-width:180px; font-size:18px; }
+}
+@media (max-width: 380px) {
+  .round { grid-template-columns:1fr 62px 62px; gap:6px; }
+  .round input.rmin, .round input.rsec { width:62px !important; }
+  .shortcut { font-size:13px; }
+}
+
 </style>
 </head>
 <body>
