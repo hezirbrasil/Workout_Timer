@@ -299,9 +299,10 @@ function start(){ if(window.running) return; if(seq.length===0) buildSeq(); if(p
   try{ document.body.classList.add('compact'); document.body.classList.add('running'); }catch(e){}
   if(raf) cancelAnimationFrame(raf); raf = requestAnimationFrame(tick); }
 function pause(){ window.running=false; try{ document.body.classList.remove('running'); }catch(e){}; if(raf) cancelAnimationFrame(raf); raf=0;}
-function reset(){ pause(); buildSeq(); idx=0; phase='idle'; remaining=0; updateDisplay();}
-function next(){ if(seq.length===0) buildSeq(); remaining=0; }
-function prev(){ if(seq.length===0) buildSeq(); idx = Math.max(0, idx-1); remaining = seq[idx]?.dur || 0; phase = seq[idx]?.type || 'idle'; playBeep('next'); updateDisplay(); }
+function reset(){ // restart from beginning and stop
+  pause(); buildSeq(); idx = 0; phase = seq[0]?.type || 'idle'; remaining = seq[0]?.dur || 0; lastWarnedSec = -1; updateDisplay(); }
+function next(){ if(seq.length===0) buildSeq(); idx++; if(idx >= seq.length){ window.running = false; phase = 'Pronto'; remaining = 0; updateDisplay(); playBeep('end'); try{ document.body.classList.remove('compact'); document.body.classList.remove('running'); }catch(e){}; return; } phase = seq[idx]?.type || phase; remaining = seq[idx]?.dur || 0; lastWarnedSec = -1; playBeep('next'); updateDisplay(); last = performance.now(); }
+function prev(){ if(seq.length===0) buildSeq(); idx = Math.max(0, idx-1); phase = seq[idx]?.type || phase; remaining = seq[idx]?.dur || 0; lastWarnedSec = -1; playBeep('next'); updateDisplay(); last = performance.now(); }
 
 function tick(ts){ if(!window.running) return; if(typeof ts === 'undefined') ts = performance.now(); const dt = (ts - last) / 1000; last = ts; remaining -= dt; if(remaining <= 0){ idx++; if(idx >= seq.length){ window.running = false; phase = 'Pronto'; remaining = 0; updateDisplay(); playBeep('end'); // exit compact mode when finished
         try{ document.body.classList.remove('compact'); document.body.classList.remove('running'); }catch(e){}; return; } phase = seq[idx].type; remaining = seq[idx].dur; lastWarnedSec = -1; playBeep('next'); } else {
@@ -351,10 +352,11 @@ const ringContainer = document.getElementById('ringContainer'); if(ringContainer
   ringContainer.addEventListener('touchend', (e)=>{ onTap(e); }, {passive:true});
   // overlay arrows
   const ovPrev = document.getElementById('overlayPrev'); const ovNext = document.getElementById('overlayNext'); const ovPause = document.getElementById('overlayPause'); const ovReset = document.getElementById('overlayReset');
-  if(ovPrev){ ovPrev.addEventListener('click', ()=>{ if(window.running){ idx = Math.max(0, idx-1); remaining = seq[idx]?.dur || 0; phase = seq[idx]?.type || phase; playBeep('next'); updateDisplay(); last = performance.now(); } }); }
-  if(ovNext){ ovNext.addEventListener('click', ()=>{ if(window.running){ remaining = 0; last = performance.now(); updateDisplay(); } }); }
+  if(ovPrev){ ovPrev.addEventListener('click', ()=>{ prev(); }); }
+  if(ovNext){ ovNext.addEventListener('click', ()=>{ next(); }); }
   if(ovPause){ ovPause.addEventListener('click', ()=>{ if(window.running) pause(); else start(); }); }
-  if(ovReset){ ovReset.addEventListener('click', ()=>{ if(window.running){ remaining = seq[idx]?.dur || 0; last = performance.now(); updateDisplay(); } else { reset(); } }); }
+  if(ovReset){ ovReset.addEventListener('click', ()=>{ // if running, restart current round; otherwise full reset
+      if(window.running){ remaining = seq[idx]?.dur || 0; lastWarnedSec = -1; last = performance.now(); updateDisplay(); playBeep('start'); } else { reset(); } }); }
 }
 
 // init
