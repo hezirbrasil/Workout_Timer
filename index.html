@@ -53,9 +53,14 @@
   .overlay-arrow{position:absolute;top:50%;transform:translateY(-50%);background:linear-gradient(180deg,rgba(15,15,15,0.7),rgba(10,10,10,0.6));border:0;color:#fff;font-size:28px;padding:12px 14px;border-radius:50%;backdrop-filter:blur(6px);box-shadow:0 6px 18px rgba(0,0,0,0.6);z-index:40}
   .overlay-prev{left:12px}
   .overlay-next{right:12px}
-  .overlay-arrow{display:block}
+  /* hidden by default; show only while running */
+  .overlay-arrow{display:none}
+  body.running .overlay-arrow{display:block}
   /* keep overlay pause always visible */
   .overlay-pause{display:block}
+  /* hide prev/next in main controls by default; show only when running */
+  #prev, #next{display:none}
+  body.running #prev, body.running #next{display:inline-block}
   @media(max-width:880px){ .overlay-arrow{font-size:30px;padding:14px} .btn{padding:14px 18px;font-size:16px;border-radius:12px} .overlay-bottom{gap:12px} }
 
   /* bottom overlay group for pause */
