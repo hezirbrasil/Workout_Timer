@@ -42,7 +42,7 @@
   body.compact .wrap > .panel.timer{grid-column:1/-1}
   .exit-compact-btn{position:absolute;top:10px;right:10px;display:none}
   /* hide controls/meta in compact mode for a pure circle view */
-  body.compact .controls, body.compact .meta, body.compact .exit-compact-btn{display:none !important}
+  body.compact .controls, body.compact .meta, body.compact .exit-compact-btn, body.compact .warn-area{display:none !important}
   /* enlarge ring for compact view */
   body.compact .ring{width: min(92vw,92vh);height: min(92vw,92vh)}
   body.compact .ring svg{width:100%;height:100%}
@@ -113,7 +113,7 @@
         <button id="reset" type="button" class="btn">Reiniciar</button>
       </div>
 
-      <div style="margin-top:10px;display:flex;gap:8px;align-items:center">
+      <div class="warn-area" style="margin-top:10px;display:flex;gap:8px;align-items:center">
       <label style="font-size:13px;color:var(--muted);display:flex;align-items:center"><input id="warnToggle" type="checkbox" checked style="margin-right:8px"> Som aviso final</label>
       <input id="warnThreshold" type="number" value="5" min="1" style="width:60px">
       <span style="color:var(--muted);font-size:13px">segundos</span>
@@ -307,22 +307,18 @@ if(startBtn) startBtn.addEventListener('click',start); if(pauseBtn) pauseBtn.add
 // exit compact button
 const exitCompactBtn = document.getElementById('exitCompact'); if(exitCompactBtn){ exitCompactBtn.addEventListener('click', ()=>{ // pause and show full UI
   try{ document.body.classList.remove('compact'); }catch(e){}; pause(); }); }
-// ring tap / long-press handlers for compact mode: tap toggles pause/resume, long-press (>=800ms) exits compact
-const ringContainer = document.getElementById('ringContainer'); if(ringContainer){ let longPressTimer = null; const longPressMs = 800; let lastTap = 0; const handleExit = ()=>{ try{ document.body.classList.remove('compact'); }catch(e){}; pause(); };
-  ringContainer.addEventListener('click', (e)=>{
+// ring tap / double-tap handlers for compact mode: single tap toggles pause/resume, double-tap exits compact
+const ringContainer = document.getElementById('ringContainer'); if(ringContainer){ let lastTap = 0; const doubleMs = 350; const handleExit = ()=>{ try{ document.body.classList.remove('compact'); }catch(e){}; pause(); };
+  const onTap = (e)=>{
     if(!document.body.classList.contains('compact')) return;
-    // ignore super-fast double clicks — treat single click as toggle pause
-    const now = Date.now(); if(now - lastTap < 250) { lastTap = now; return; } lastTap = now;
+    const now = Date.now(); if(now - lastTap <= doubleMs){ // double-tap -> exit
+      lastTap = 0; handleExit(); return; }
+    lastTap = now;
+    // single tap -> toggle
     if(window.running) pause(); else start();
-  });
-  ringContainer.addEventListener('touchstart', (e)=>{
-    if(!document.body.classList.contains('compact')) return;
-    if(e.touches.length !== 1) return;
-    longPressTimer = setTimeout(()=>{ handleExit(); }, longPressMs);
-  }, {passive:true});
-  ringContainer.addEventListener('touchend', (e)=>{
-    if(longPressTimer){ clearTimeout(longPressTimer); longPressTimer = null; }
-  }, {passive:true});
+  };
+  ringContainer.addEventListener('click', onTap);
+  ringContainer.addEventListener('touchend', (e)=>{ onTap(e); }, {passive:true});
 }
 
 // init
