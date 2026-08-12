@@ -49,6 +49,13 @@
   body.compact .ring .center .time{font-size:calc(8vh + 2vw);}
   body.compact .ring .center .phase{display:block;font-size:18px}
   .shortcut{min-width:120px;white-space:nowrap;text-align:center}
+  /* overlay arrows */
+  .overlay-arrow{position:absolute;top:50%;transform:translateY(-50%);background:rgba(0,0,0,0.35);border:0;color:#fff;font-size:26px;padding:10px 12px;border-radius:50%;backdrop-filter:blur(4px);}
+  .overlay-prev{left:12px}
+  .overlay-next{right:12px}
+  .overlay-arrow{display:none}
+  body.running .overlay-arrow{display:block}
+  @media(max-width:880px){ .overlay-arrow{font-size:20px;padding:8px} }
   .round.dragging{opacity:0.6;transform:scale(0.995)}
   .round.drag-over-top{outline:2px dashed var(--accent);outline-offset:-6px}
   .round.drag-over-bottom{outline:2px dashed var(--accent);outline-offset:-6px}
@@ -63,10 +70,20 @@
 
       <hr style="opacity:0.06;margin:12px 0">
       <div style="display:flex;gap:8px;align-items:center">
-        <input id="newName" type="text" placeholder="Nome do round (ex: Circuito)" style="flex:1;padding:8px;border-radius:8px;border:1px solid #111;background:#050505;color:var(--fg)">
-        <input id="newMin" type="number" value="1" min="0" style="width:70px" title="Minutos">
-        <input id="newSec" type="number" value="0" min="0" max="59" style="width:70px" title="Segundos">
-        <button id="addRound" type="button" class="btn primary">Adicionar</button>
+        <div style="display:flex;flex-direction:column;gap:4px;flex:1">
+          <input id="newName" type="text" placeholder="Nome do round (ex: Circuito)" style="padding:8px;border-radius:8px;border:1px solid #111;background:#050505;color:var(--fg)">
+          <div style="display:flex;gap:8px;align-items:center">
+            <div style="display:flex;flex-direction:column;align-items:center;font-size:12px;color:var(--muted)">
+              <span>Minutos</span>
+              <input id="newMin" type="number" value="1" min="0" style="width:70px" title="Minutos">
+            </div>
+            <div style="display:flex;flex-direction:column;align-items:center;font-size:12px;color:var(--muted)">
+              <span>Segundos</span>
+              <input id="newSec" type="number" value="0" min="0" max="59" style="width:70px" title="Segundos">
+            </div>
+            <div style="margin-left:auto"><button id="addRound" type="button" class="btn primary">Adicionar</button></div>
+          </div>
+        </div>
       </div>
       <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap;">
         <label style="font-size:12px;color:var(--muted);align-self:center;margin-right:6px">Atalhos:</label>
@@ -89,6 +106,9 @@
     <div class="panel timer">
       <div class="ring" id="ringContainer">
       <button id="exitCompact" class="btn small exit-compact-btn">Voltar</button>
+      <!-- overlay arrows for quick advance/prev while running -->
+      <button id="overlayPrev" class="btn small overlay-arrow overlay-prev" title="Anterior">◀</button>
+      <button id="overlayNext" class="btn small overlay-arrow overlay-next" title="Próximo">▶</button>
         <svg width="220" height="220" viewBox="0 0 100 100">
           <defs>
             <linearGradient id="grad" x1="0" x2="1">
@@ -266,15 +286,15 @@ var seq = window.seq || []; let idx=0; let phase='idle'; let remaining=0; let ra
 function buildSeq(){ seq = []; // use exactly the configured blocks in order
   store.rounds.forEach((r)=>{ seq.push({type: r.name || 'Bloco', dur: r.dur || 0}); }); }
 function start(){ if(window.running) return; if(seq.length===0) buildSeq(); if(phase==='idle' || phase==='Pronto'){ idx=0; remaining = seq[0]?.dur || 0; phase = seq[0]?.type || 'Pronto'; playBeep('start'); } window.running = true; lastWarnedSec = -1; last = performance.now(); updateDisplay(); // enter compact timer-only mode
-  try{ document.body.classList.add('compact'); }catch(e){}
+  try{ document.body.classList.add('compact'); document.body.classList.add('running'); }catch(e){}
   if(raf) cancelAnimationFrame(raf); raf = requestAnimationFrame(tick); }
-function pause(){ window.running=false; if(raf) cancelAnimationFrame(raf); raf=0;}
+function pause(){ window.running=false; try{ document.body.classList.remove('running'); }catch(e){}; if(raf) cancelAnimationFrame(raf); raf=0;}
 function reset(){ pause(); buildSeq(); idx=0; phase='idle'; remaining=0; updateDisplay();}
 function next(){ if(seq.length===0) buildSeq(); remaining=0; }
 function prev(){ if(seq.length===0) buildSeq(); idx = Math.max(0, idx-1); remaining = seq[idx]?.dur || 0; phase = seq[idx]?.type || 'idle'; playBeep('next'); updateDisplay(); }
 
 function tick(ts){ if(!window.running) return; if(typeof ts === 'undefined') ts = performance.now(); const dt = (ts - last) / 1000; last = ts; remaining -= dt; if(remaining <= 0){ idx++; if(idx >= seq.length){ window.running = false; phase = 'Pronto'; remaining = 0; updateDisplay(); playBeep('end'); // exit compact mode when finished
-        try{ document.body.classList.remove('compact'); }catch(e){}; return; } phase = seq[idx].type; remaining = seq[idx].dur; lastWarnedSec = -1; playBeep('next'); } else {
+        try{ document.body.classList.remove('compact'); document.body.classList.remove('running'); }catch(e){}; return; } phase = seq[idx].type; remaining = seq[idx].dur; lastWarnedSec = -1; playBeep('next'); } else {
       // warning beeps in the final seconds
       try{
         if(els.warnToggle && els.warnToggle.checked){ const threshold = parseInt(els.warnThreshold?.value) || 5; const sec = Math.ceil(remaining); if(sec <= threshold && sec !== lastWarnedSec){ lastWarnedSec = sec; playBeep('warn'); } }
@@ -308,7 +328,7 @@ if(startBtn) startBtn.addEventListener('click',start); if(pauseBtn) pauseBtn.add
 const exitCompactBtn = document.getElementById('exitCompact'); if(exitCompactBtn){ exitCompactBtn.addEventListener('click', ()=>{ // pause and show full UI
   try{ document.body.classList.remove('compact'); }catch(e){}; pause(); }); }
 // ring tap / double-tap handlers for compact mode: single tap toggles pause/resume, double-tap exits compact
-const ringContainer = document.getElementById('ringContainer'); if(ringContainer){ let lastTap = 0; const doubleMs = 350; const handleExit = ()=>{ try{ document.body.classList.remove('compact'); }catch(e){}; pause(); };
+const ringContainer = document.getElementById('ringContainer'); if(ringContainer){ let lastTap = 0; const doubleMs = 350; const handleExit = ()=>{ try{ document.body.classList.remove('compact'); document.body.classList.remove('running'); }catch(e){}; pause(); };
   const onTap = (e)=>{
     if(!document.body.classList.contains('compact')) return;
     const now = Date.now(); if(now - lastTap <= doubleMs){ // double-tap -> exit
@@ -319,6 +339,9 @@ const ringContainer = document.getElementById('ringContainer'); if(ringContainer
   };
   ringContainer.addEventListener('click', onTap);
   ringContainer.addEventListener('touchend', (e)=>{ onTap(e); }, {passive:true});
+  // overlay arrows
+  const ovPrev = document.getElementById('overlayPrev'); const ovNext = document.getElementById('overlayNext'); if(ovPrev){ ovPrev.addEventListener('click', ()=>{ if(window.running) prev(); }); }
+  if(ovNext){ ovNext.addEventListener('click', ()=>{ if(window.running){ remaining = 0; } }); }
 }
 
 // init
