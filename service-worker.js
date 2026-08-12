@@ -1,4 +1,4 @@
-const CACHE_NAME = 'workout-timer-v6';
+const CACHE_NAME = 'workout-timer-v7';
 const APP_SHELL = ['./','./index.html','./manifest.json','./icon.svg'];
 const UI_PATCH = `<style id="wt-premium-controls">
 .timer-nav{display:none!important;gap:14px!important;align-items:center;justify-content:center;margin-top:18px!important}
@@ -12,7 +12,7 @@ const UI_PATCH = `<style id="wt-premium-controls">
 .compact .timer-nav .pause{width:82px!important;height:82px!important;min-width:82px!important;min-height:82px!important}
 @media(max-width:380px){.timer-nav{gap:10px!important}.compact .timer-nav .btn{width:58px!important;height:58px!important;min-width:58px!important;min-height:58px!important}.compact .timer-nav .pause{width:72px!important;height:72px!important;min-width:72px!important;min-height:72px!important}}
 </style>`;
-function patchHTML(response){return response.text().then(html=>{if(!html.includes('wt-premium-controls'))html=html.replace('</head>',UI_PATCH+'</head>');return new Response(html,{status:response.status,statusText:response.statusText,headers:response.headers});});}
+function patchHTML(response){return response.text().then(html=>{if(!html.includes('wt-premium-controls'))html=html.replace('</head>',UI_PATCH+'</head>');html=html.replace('>⏮<','><span aria-hidden="true">‹</span><').replace('>⏭<','><span aria-hidden="true">›</span><').replace('>⏸ Pausar<','><span aria-hidden="true">Ⅱ</span><').replace('>▶ Continuar<','><span aria-hidden="true">▶</span><');return new Response(html,{status:response.status,statusText:response.statusText,headers:response.headers});});}
 self.addEventListener('install',event=>{event.waitUntil(caches.open(CACHE_NAME).then(cache=>cache.addAll(APP_SHELL)).then(()=>self.skipWaiting()));});
 self.addEventListener('activate',event=>{event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE_NAME).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});
 self.addEventListener('fetch',event=>{if(event.request.method!=='GET')return;event.respondWith((async()=>{try{const response=await fetch(event.request,{cache:'no-store'});if(!response||!response.ok)return caches.match(event.request)||response;const type=response.headers.get('content-type')||'';const result=type.includes('text/html')?await patchHTML(response.clone()):response;const cache=await caches.open(CACHE_NAME);await cache.put(event.request,result.clone());return result;}catch(e){return caches.match(event.request)||new Response('Offline',{status:503});}})());});
