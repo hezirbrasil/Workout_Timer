@@ -14,9 +14,10 @@
   label{font-size:12px;color:var(--muted)}
   input[type=number],input[type=text],select{width:100%;padding:8px;border-radius:8px;border:1px solid #111;background:#050505;color:var(--fg);margin-top:6px}
   .list{margin-top:10px;max-height:520px;overflow:auto}
-  .round{display:flex;gap:12px;align-items:center;padding:12px;border-radius:10px;background:linear-gradient(90deg,rgba(138,43,226,0.04),transparent);margin-bottom:10px;font-size:15px}
-  .round input{width:100px;padding:6px;border-radius:6px;border:1px solid #111;background:#050505;color:var(--fg)}
+  .round{display:flex;gap:12px;align-items:center;padding:14px;border-radius:10px;background:linear-gradient(90deg,rgba(138,43,226,0.04),transparent);margin-bottom:10px;font-size:15px;touch-action:none;-webkit-user-select:none;user-select:none;cursor:grab}
+  .round input{width:100px;padding:8px;border-radius:6px;border:1px solid #111;background:#050505;color:var(--fg)}
   .round .name{flex:1;font-size:15px}
+  .round.dragging{opacity:0.7;transform:scale(0.99);cursor:grabbing}
   .btn{background:transparent;border:1px solid rgba(255,255,255,0.05);color:var(--fg);padding:8px 10px;border-radius:8px;cursor:pointer}
   .btn.primary{background:linear-gradient(90deg,var(--accent),#6f50d8);color:#fff;border:0}
 
@@ -121,7 +122,7 @@ function renderRounds(){els.rounds.innerHTML=''; store.rounds.forEach((r,i)=>{
   const currentSeconds = r.dur || 0; const displayMin = Math.floor(currentSeconds/60); const displaySec = currentSeconds % 60;
   div.innerHTML = `<div class="name"><input data-i="${i}" class="rname" value="${escapeHtml(r.name)}" style="background:transparent;border:0;color:var(--fg)"></div><input data-i="${i}" class="rmin" type="number" value="${displayMin}" min="0" style="width:60px;padding:6px;border-radius:6px;border:1px solid #111;background:#050505;color:var(--fg)" title="min"><input data-i="${i}" class="rsec" type="number" value="${displaySec}" min="0" max="59" style="width:60px;padding:6px;border-radius:6px;border:1px solid #111;background:#050505;color:var(--fg)" title="sec"><div style="display:flex;gap:6px"><button data-i="${i}" class="btn small move-up" ${disabledAttr}>▲</button><button data-i="${i}" class="btn small move-down" ${disabledAttr}>▼</button><button data-i="${i}" class="btn small del" ${disabledAttr}>✖</button></div>`;
 
-  // drag handlers
+  // drag handlers (mouse)
   div.addEventListener('dragstart', (e)=>{
     e.dataTransfer.effectAllowed = 'move';
     e.dataTransfer.setData('text/plain', i);
@@ -131,6 +132,41 @@ function renderRounds(){els.rounds.innerHTML=''; store.rounds.forEach((r,i)=>{
   div.addEventListener('dragover', (e)=>{ e.preventDefault(); const dragging = els.rounds.querySelector('.dragging'); if(!dragging) return; const rect = div.getBoundingClientRect(); const mid = rect.top + rect.height/2; if(e.clientY < mid){ div.classList.add('drag-over-top'); div.classList.remove('drag-over-bottom'); } else { div.classList.add('drag-over-bottom'); div.classList.remove('drag-over-top'); } });
   div.addEventListener('dragleave', ()=>{ div.classList.remove('drag-over-top','drag-over-bottom'); });
   div.addEventListener('drop', (e)=>{ e.preventDefault(); const from = Number(e.dataTransfer.getData('text/plain')); const to = Number(div.dataset.index); if(isNaN(from) || isNaN(to)) return; const rect = div.getBoundingClientRect(); const mid = rect.top + rect.height/2; let insertAt = to; if(e.clientY > mid) insertAt = to + 1; const item = store.rounds.splice(from,1)[0]; if(from < insertAt) insertAt--; store.rounds.splice(insertAt,0,item); save(); renderRounds(); });
+
+  // touch drag handlers (mobile)
+  div.addEventListener('touchstart', (e)=>{
+    if(e.touches.length !== 1) return;
+    e.preventDefault();
+    const t = e.touches[0];
+    div.classList.add('dragging');
+    // store dragging info globally
+    window._touchDrag = {from: i, startY: t.clientY};
+  }, {passive:false});
+  div.addEventListener('touchmove', (e)=>{
+    if(!window._touchDrag) return;
+    const t = e.touches[0];
+    e.preventDefault();
+    const el = document.elementFromPoint(t.clientX, t.clientY);
+    if(!el) return;
+    const over = el.closest('.round');
+    els.rounds.querySelectorAll('.round').forEach(it=>it.classList.remove('drag-over-top','drag-over-bottom'));
+    if(!over || over === div) return;
+    const rect = over.getBoundingClientRect(); const mid = rect.top + rect.height/2;
+    if(t.clientY < mid){ over.classList.add('drag-over-top'); over.classList.remove('drag-over-bottom'); } else { over.classList.add('drag-over-bottom'); over.classList.remove('drag-over-top'); }
+  }, {passive:false});
+  div.addEventListener('touchend', (e)=>{
+    const changed = e.changedTouches[0]; if(!changed || !window._touchDrag) { div.classList.remove('dragging'); delete window._touchDrag; return; }
+    const from = window._touchDrag.from; const el = document.elementFromPoint(changed.clientX, changed.clientY); const over = el ? el.closest('.round') : null;
+    let insertAt = store.rounds.length - 1;
+    if(over){ const to = Number(over.dataset.index); if(!isNaN(to)){ const rect = over.getBoundingClientRect(); insertAt = (changed.clientY > (rect.top + rect.height/2)) ? to + 1 : to; } }
+    // perform move
+    if(typeof from === 'number' && !isNaN(from)){
+      const item = store.rounds.splice(from,1)[0]; if(from < insertAt) insertAt--; store.rounds.splice(insertAt,0,item); save(); renderRounds();
+    }
+    div.classList.remove('dragging'); els.rounds.querySelectorAll('.round').forEach(it=>it.classList.remove('drag-over-top','drag-over-bottom'));
+    delete window._touchDrag;
+  }, {passive:false});
+  div.addEventListener('touchcancel', ()=>{ div.classList.remove('dragging'); delete window._touchDrag; els.rounds.querySelectorAll('.round').forEach(it=>it.classList.remove('drag-over-top','drag-over-bottom')); });
 
   els.rounds.appendChild(div);
 });}
