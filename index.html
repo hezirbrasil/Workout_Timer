@@ -78,7 +78,44 @@
   body:not(.compact) #overlayPause { display:none !important; }
   body:not(.compact) .controls { display:flex; }
   body:not(.compact) .controls #start { display:inline-block !important; }
-  </style>
+  
+
+/* MOBILE CONFIG UI */
+@media (max-width: 600px) {
+  html, body { min-height: 100%; }
+  .wrap { display:block; width:100%; max-width:none; margin:0; padding:10px; }
+  .wrap > .panel:first-child { padding:14px; border-radius:14px; }
+  .wrap > .panel.timer { margin-top:10px; padding:14px; border-radius:14px; }
+  .panel h1 { font-size:22px; }
+  .panel:first-child > div:first-of-type { font-size:14px !important; }
+  #newName { min-height:48px; font-size:16px; padding:12px !important; }
+  #newMin, #newSec { width:82px !important; min-height:48px; font-size:18px; text-align:center; }
+  #addRound { min-height:48px; padding:12px 18px; font-size:16px; }
+  .shortcut { min-height:44px; min-width:0; flex:1 1 calc(50% - 6px); font-size:14px; }
+  .round { display:grid; grid-template-columns:1fr 68px 68px; gap:8px; padding:12px; align-items:center; }
+  .round .name { grid-column:1 / -1; }
+  .round .name input { width:100% !important; min-height:44px; font-size:16px !important; }
+  .round input.rmin, .round input.rsec { width:68px !important; min-height:44px; font-size:16px; text-align:center; }
+  .round > div:last-child { grid-column:1 / -1; display:flex; gap:8px !important; }
+  .round > div:last-child .btn { flex:1; min-height:44px; }
+  #clearAll { min-height:46px; width:100%; font-size:16px; }
+  .list { max-height:none; overflow:visible; }
+  .warn-area { flex-wrap:wrap; }
+  .warn-area input[type=number] { min-height:44px; font-size:16px; }
+  body:not(.compact) .timer { display:flex; }
+  body:not(.compact) .timer .ring { width:180px; height:180px; }
+  body:not(.compact) .timer .ring svg { width:180px; height:180px; }
+  body:not(.compact) .timer .time { font-size:42px; }
+  body:not(.compact) .timer .phase { font-size:13px; }
+  body:not(.compact) .timer .controls #start { min-height:54px; min-width:180px; font-size:18px; }
+}
+@media (max-width: 380px) {
+  .round { grid-template-columns:1fr 62px 62px; gap:6px; }
+  .round input.rmin, .round input.rsec { width:62px !important; }
+  .shortcut { font-size:13px; }
+}
+
+</style>
 </head>
 <body>
   <div class="wrap">
