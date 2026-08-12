@@ -111,10 +111,6 @@
 
     <div class="panel timer">
       <div class="ring" id="ringContainer">
-        <button id="exitCompact" class="btn small exit-compact-btn">Voltar</button>
-        <button id="overlayPrev" class="btn small overlay-arrow overlay-prev" title="Anterior">◀</button>
-        <button id="overlayNext" class="btn small overlay-arrow overlay-next" title="Próximo">▶</button>
-        <div class="overlay-bottom"><button id="overlayPause" class="btn small overlay-pause" title="Pausar/Retomar">⏯</button></div>
         <svg width="220" height="220" viewBox="0 0 100 100">
           <defs><linearGradient id="grad" x1="0" x2="1"><stop offset="0" stop-color="#9b59ff"/><stop offset="1" stop-color="#8a2be2"/></linearGradient></defs>
           <circle cx="50" cy="50" r="40" stroke="rgba(255,255,255,0.06)" stroke-width="6" fill="none" />
@@ -122,7 +118,7 @@
         </svg>
         <div class="center"><div class="phase" id="phaseName">Pronto</div><div class="time" id="timeLeft">00:00</div></div>
       </div>
-      <div class="controls"><button id="prev" type="button" class="btn">◀</button><button id="start" type="button" class="btn primary">Iniciar</button><button id="pause" type="button" class="btn">Pausar</button><button id="next" type="button" class="btn">▶</button></div>
+      <div class="controls"><button id="start" type="button" class="btn primary">Iniciar</button></div>
       <div class="warn-area" style="margin-top:10px;display:flex;gap:8px;align-items:center"><label style="font-size:13px;color:var(--muted);display:flex;align-items:center"><input id="warnToggle" type="checkbox" checked style="margin-right:8px"> Som aviso final</label><input id="warnThreshold" type="number" value="5" min="1" style="width:60px"><span style="color:var(--muted);font-size:13px">segundos</span></div>
       <div class="meta" id="info">Round 0 / 0 • Total: 00:00</div>
     </div>
