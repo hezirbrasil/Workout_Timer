@@ -42,7 +42,7 @@
   body.compact .wrap > .panel.timer{grid-column:1/-1}
   .exit-compact-btn{position:absolute;top:10px;right:10px;display:none}
   /* hide controls/meta in compact mode for a pure circle view */
-  body.compact .controls, body.compact .meta, body.compact .exit-compact-btn, body.compact .warn-area{display:none !important}
+  body.compact .meta, body.compact .exit-compact-btn, body.compact .warn-area{display:none !important}
   /* enlarge ring for compact view */
   body.compact .ring{width: min(92vw,92vh);height: min(92vw,92vh)}
   body.compact .ring svg{width:100%;height:100%}
@@ -54,13 +54,13 @@
   .overlay-prev{left:12px}
   .overlay-next{right:12px}
   .overlay-arrow{display:none}
-  body.running .overlay-arrow{display:block}
+  /* keep overlay pause always visible */
+  .overlay-pause{display:block}
   @media(max-width:880px){ .overlay-arrow{font-size:30px;padding:14px} .btn{padding:14px 18px;font-size:16px;border-radius:12px} .overlay-bottom{gap:12px} }
 
-  /* bottom overlay group for pause/reset */
-  .overlay-bottom{position:absolute;bottom:14px;left:50%;transform:translateX(-50%);display:none;gap:8px}
-  .overlay-bottom .overlay-arrow{position:static;transform:none}
-  body.running .overlay-bottom{display:flex}
+  /* bottom overlay group for pause */
+  .overlay-bottom{position:absolute;bottom:14px;left:50%;transform:translateX(-50%);display:flex;gap:8px}
+  .overlay-bottom .overlay-arrow, .overlay-bottom .overlay-pause{position:static;transform:none}
   @media(max-width:880px){ .overlay-bottom{bottom:10px} }
   .round.dragging{opacity:0.6;transform:scale(0.995)}
   .round.drag-over-top{outline:2px dashed var(--accent);outline-offset:-6px}
@@ -112,13 +112,9 @@
     <div class="panel timer">
       <div class="ring" id="ringContainer">
       <button id="exitCompact" class="btn small exit-compact-btn">Voltar</button>
-      <!-- overlay arrows for quick advance/prev while running -->
-      <button id="overlayPrev" class="btn small overlay-arrow overlay-prev" title="Anterior">◀</button>
-      <button id="overlayNext" class="btn small overlay-arrow overlay-next" title="Próximo">▶</button>
-      <!-- overlay bottom controls: pause/resume and reset -->
+      <!-- overlay bottom controls: pause/resume -->
       <div class="overlay-bottom">
-        <button id="overlayPause" class="btn small overlay-arrow" title="Pausar/Retomar">⏯</button>
-        <button id="overlayReset" class="btn small overlay-arrow" title="Reiniciar">⟲</button>
+        <button id="overlayPause" class="btn small overlay-pause" title="Pausar/Retomar">⏯</button>
       </div>
         <svg width="220" height="220" viewBox="0 0 100 100">
           <defs>
@@ -137,11 +133,8 @@
       </div>
 
       <div class="controls">
-        <button id="prev" type="button" class="btn">◀</button>
         <button id="start" type="button" class="btn primary">Iniciar</button>
         <button id="pause" type="button" class="btn">Pausar</button>
-        <button id="next" type="button" class="btn">▶</button>
-        <button id="reset" type="button" class="btn">Reiniciar</button>
       </div>
 
       <div class="warn-area" style="margin-top:10px;display:flex;gap:8px;align-items:center">
@@ -164,7 +157,7 @@ function save(){localStorage.setItem(LS,JSON.stringify(store)); updateUI();}
 
 const els={warmup:1,rest:1,end:1,rounds:1,newName:1,newMin:1,newSec:1,warnToggle:1,warnThreshold:1};
 els.warmup = document.getElementById('warmup'); els.rest = document.getElementById('rest'); els.end = document.getElementById('end'); els.rounds = document.getElementById('rounds'); els.newName = document.getElementById('newName'); els.newMin = document.getElementById('newMin'); els.newSec = document.getElementById('newSec'); els.warnToggle = document.getElementById('warnToggle'); els.warnThreshold = document.getElementById('warnThreshold');
-const startBtn=document.getElementById('start'); const pauseBtn=document.getElementById('pause'); const resetBtn=document.getElementById('reset'); const prevBtn=document.getElementById('prev'); const nextBtn=document.getElementById('next'); const timeLeftEl=document.getElementById('timeLeft'); const phaseNameEl=document.getElementById('phaseName'); const infoEl=document.getElementById('info'); const progEl = document.getElementById('prog');
+const startBtn=document.getElementById('start'); const pauseBtn=document.getElementById('pause'); const timeLeftEl=document.getElementById('timeLeft'); const phaseNameEl=document.getElementById('phaseName'); const infoEl=document.getElementById('info'); const progEl = document.getElementById('prog');
 
 function renderRounds(){els.rounds.innerHTML=''; store.rounds.forEach((r,i)=>{
   const div=document.createElement('div'); div.className='round'; div.setAttribute('draggable','true'); div.dataset.index = i;
@@ -335,7 +328,7 @@ function updateUI(){ try{ renderRounds(); buildSeq(); updateDisplay(); }catch(e)
 
 function totalDuration(){ buildSeq(); return seq.reduce((a,b)=>a+(b.dur||0),0); }
 
-if(startBtn) startBtn.addEventListener('click',start); if(pauseBtn) pauseBtn.addEventListener('click',pause); if(resetBtn) resetBtn.addEventListener('click',reset); if(prevBtn) prevBtn.addEventListener('click',prev); if(nextBtn) nextBtn.addEventListener('click',next);
+if(startBtn) startBtn.addEventListener('click',start); if(pauseBtn) pauseBtn.addEventListener('click',pause);
 // exit compact button
 const exitCompactBtn = document.getElementById('exitCompact'); if(exitCompactBtn){ exitCompactBtn.addEventListener('click', ()=>{ // pause and show full UI
   try{ document.body.classList.remove('compact'); }catch(e){}; pause(); }); }
