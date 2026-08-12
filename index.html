@@ -56,6 +56,11 @@
   .overlay-arrow{display:none}
   body.running .overlay-arrow{display:block}
   @media(max-width:880px){ .overlay-arrow{font-size:20px;padding:8px} }
+  /* bottom overlay group for pause/reset */
+  .overlay-bottom{position:absolute;bottom:14px;left:50%;transform:translateX(-50%);display:none;gap:8px}
+  .overlay-bottom .overlay-arrow{position:static;transform:none}
+  body.running .overlay-bottom{display:flex}
+  @media(max-width:880px){ .overlay-bottom{bottom:10px} }
   .round.dragging{opacity:0.6;transform:scale(0.995)}
   .round.drag-over-top{outline:2px dashed var(--accent);outline-offset:-6px}
   .round.drag-over-bottom{outline:2px dashed var(--accent);outline-offset:-6px}
@@ -109,6 +114,11 @@
       <!-- overlay arrows for quick advance/prev while running -->
       <button id="overlayPrev" class="btn small overlay-arrow overlay-prev" title="Anterior">◀</button>
       <button id="overlayNext" class="btn small overlay-arrow overlay-next" title="Próximo">▶</button>
+      <!-- overlay bottom controls: pause/resume and reset -->
+      <div class="overlay-bottom">
+        <button id="overlayPause" class="btn small overlay-arrow" title="Pausar/Retomar">⏯</button>
+        <button id="overlayReset" class="btn small overlay-arrow" title="Reiniciar">⟲</button>
+      </div>
         <svg width="220" height="220" viewBox="0 0 100 100">
           <defs>
             <linearGradient id="grad" x1="0" x2="1">
@@ -340,8 +350,10 @@ const ringContainer = document.getElementById('ringContainer'); if(ringContainer
   ringContainer.addEventListener('click', onTap);
   ringContainer.addEventListener('touchend', (e)=>{ onTap(e); }, {passive:true});
   // overlay arrows
-  const ovPrev = document.getElementById('overlayPrev'); const ovNext = document.getElementById('overlayNext'); if(ovPrev){ ovPrev.addEventListener('click', ()=>{ if(window.running) prev(); }); }
+  const ovPrev = document.getElementById('overlayPrev'); const ovNext = document.getElementById('overlayNext'); const ovPause = document.getElementById('overlayPause'); const ovReset = document.getElementById('overlayReset'); if(ovPrev){ ovPrev.addEventListener('click', ()=>{ if(window.running) prev(); }); }
   if(ovNext){ ovNext.addEventListener('click', ()=>{ if(window.running){ remaining = 0; } }); }
+  if(ovPause){ ovPause.addEventListener('click', ()=>{ if(window.running) pause(); else start(); }); }
+  if(ovReset){ ovReset.addEventListener('click', ()=>{ reset(); }); }
 }
 
 // init
