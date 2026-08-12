@@ -36,6 +36,12 @@
   .ring .center{position:absolute;display:flex;flex-direction:column;align-items:center}
 
   @media(max-width:880px){.wrap{grid-template-columns:1fr;padding:12px}.timer{padding:18px}.time{font-size:44px}}
+  /* compact mode: show only the timer panel */
+  body.compact .wrap{grid-template-columns:0 1fr}
+  body.compact .wrap > .panel:first-child{display:none}
+  body.compact .wrap > .panel.timer{grid-column:1/-1}
+  .exit-compact-btn{position:absolute;top:10px;right:10px;display:none}
+  body.compact .exit-compact-btn{display:block}
   .round.dragging{opacity:0.6;transform:scale(0.995)}
   .round.drag-over-top{outline:2px dashed var(--accent);outline-offset:-6px}
   .round.drag-over-bottom{outline:2px dashed var(--accent);outline-offset:-6px}
@@ -75,6 +81,7 @@
 
     <div class="panel timer">
       <div class="ring">
+      <button id="exitCompact" class="btn small exit-compact-btn">Voltar</button>
         <svg width="220" height="220" viewBox="0 0 100 100">
           <defs>
             <linearGradient id="grad" x1="0" x2="1">
@@ -251,13 +258,16 @@ function playBeep(kind){ if(kind==='start') playTone(880,0.25); else if(kind==='
 var seq = window.seq || []; let idx=0; let phase='idle'; let remaining=0; let raf=0; let last=0; let lastWarnedSec = -1;
 function buildSeq(){ seq = []; // use exactly the configured blocks in order
   store.rounds.forEach((r)=>{ seq.push({type: r.name || 'Bloco', dur: r.dur || 0}); }); }
-function start(){ if(window.running) return; if(seq.length===0) buildSeq(); if(phase==='idle' || phase==='Pronto'){ idx=0; remaining = seq[0]?.dur || 0; phase = seq[0]?.type || 'Pronto'; playBeep('start'); } window.running = true; lastWarnedSec = -1; last = performance.now(); updateDisplay(); if(raf) cancelAnimationFrame(raf); raf = requestAnimationFrame(tick); }
+function start(){ if(window.running) return; if(seq.length===0) buildSeq(); if(phase==='idle' || phase==='Pronto'){ idx=0; remaining = seq[0]?.dur || 0; phase = seq[0]?.type || 'Pronto'; playBeep('start'); } window.running = true; lastWarnedSec = -1; last = performance.now(); updateDisplay(); // enter compact timer-only mode
+  try{ document.body.classList.add('compact'); }catch(e){}
+  if(raf) cancelAnimationFrame(raf); raf = requestAnimationFrame(tick); }
 function pause(){ window.running=false; if(raf) cancelAnimationFrame(raf); raf=0;}
 function reset(){ pause(); buildSeq(); idx=0; phase='idle'; remaining=0; updateDisplay();}
 function next(){ if(seq.length===0) buildSeq(); remaining=0; }
 function prev(){ if(seq.length===0) buildSeq(); idx = Math.max(0, idx-1); remaining = seq[idx]?.dur || 0; phase = seq[idx]?.type || 'idle'; playBeep('next'); updateDisplay(); }
 
-function tick(ts){ if(!window.running) return; if(typeof ts === 'undefined') ts = performance.now(); const dt = (ts - last) / 1000; last = ts; remaining -= dt; if(remaining <= 0){ idx++; if(idx >= seq.length){ window.running = false; phase = 'Pronto'; remaining = 0; updateDisplay(); playBeep('end'); return; } phase = seq[idx].type; remaining = seq[idx].dur; lastWarnedSec = -1; playBeep('next'); } else {
+function tick(ts){ if(!window.running) return; if(typeof ts === 'undefined') ts = performance.now(); const dt = (ts - last) / 1000; last = ts; remaining -= dt; if(remaining <= 0){ idx++; if(idx >= seq.length){ window.running = false; phase = 'Pronto'; remaining = 0; updateDisplay(); playBeep('end'); // exit compact mode when finished
+        try{ document.body.classList.remove('compact'); }catch(e){}; return; } phase = seq[idx].type; remaining = seq[idx].dur; lastWarnedSec = -1; playBeep('next'); } else {
       // warning beeps in the final seconds
       try{
         if(els.warnToggle && els.warnToggle.checked){ const threshold = parseInt(els.warnThreshold?.value) || 5; const sec = Math.ceil(remaining); if(sec <= threshold && sec !== lastWarnedSec){ lastWarnedSec = sec; playBeep('warn'); } }
@@ -287,6 +297,9 @@ function updateUI(){ try{ renderRounds(); buildSeq(); updateDisplay(); }catch(e)
 function totalDuration(){ buildSeq(); return seq.reduce((a,b)=>a+(b.dur||0),0); }
 
 if(startBtn) startBtn.addEventListener('click',start); if(pauseBtn) pauseBtn.addEventListener('click',pause); if(resetBtn) resetBtn.addEventListener('click',reset); if(prevBtn) prevBtn.addEventListener('click',prev); if(nextBtn) nextBtn.addEventListener('click',next);
+// exit compact button
+const exitCompactBtn = document.getElementById('exitCompact'); if(exitCompactBtn){ exitCompactBtn.addEventListener('click', ()=>{ // pause and show full UI
+  try{ document.body.classList.remove('compact'); }catch(e){}; pause(); }); }
 
 // init
 load(); renderRounds(); buildSeq(); updateDisplay();
