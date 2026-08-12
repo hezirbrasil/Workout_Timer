@@ -18,7 +18,7 @@
   .round input{width:100px;padding:8px;border-radius:6px;border:1px solid #111;background:#050505;color:var(--fg)}
   .round .name{flex:1;font-size:15px}
   .round.dragging{opacity:0.7;transform:scale(0.99);cursor:grabbing}
-  .btn{background:transparent;border:1px solid rgba(255,255,255,0.05);color:var(--fg);padding:8px 10px;border-radius:8px;cursor:pointer}
+  .btn{background:transparent;border:1px solid rgba(255,255,255,0.06);color:var(--fg);padding:10px 14px;border-radius:12px;cursor:pointer}
   .btn.primary{background:linear-gradient(90deg,var(--accent),#6f50d8);color:#fff;border:0}
 
   /* timer */
@@ -26,7 +26,7 @@
   .time{font-size:56px;font-weight:700;color:var(--fg)}
   .phase{font-size:14px;color:var(--muted);margin-bottom:6px}
   .controls{display:flex;gap:8px;margin-top:18px}
-  .small{font-size:14px;padding:8px 10px}
+  .small{font-size:15px;padding:10px 12px}
   .meta{margin-top:12px;color:var(--muted);font-size:13px}
   .shortcut{min-width:120px;white-space:nowrap;text-align:center}
 
@@ -50,12 +50,12 @@
   body.compact .ring .center .phase{display:block;font-size:18px}
   .shortcut{min-width:120px;white-space:nowrap;text-align:center}
   /* overlay arrows */
-  .overlay-arrow{position:absolute;top:50%;transform:translateY(-50%);background:rgba(0,0,0,0.35);border:0;color:#fff;font-size:26px;padding:10px 12px;border-radius:50%;backdrop-filter:blur(4px);}
+  .overlay-arrow{position:absolute;top:50%;transform:translateY(-50%);background:linear-gradient(180deg,rgba(15,15,15,0.7),rgba(10,10,10,0.6));border:0;color:#fff;font-size:28px;padding:12px 14px;border-radius:50%;backdrop-filter:blur(6px);box-shadow:0 6px 18px rgba(0,0,0,0.6);z-index:30}
   .overlay-prev{left:12px}
   .overlay-next{right:12px}
   .overlay-arrow{display:none}
   body.running .overlay-arrow{display:block}
-  @media(max-width:880px){ .overlay-arrow{font-size:20px;padding:8px} }
+  @media(max-width:880px){ .overlay-arrow{font-size:22px;padding:10px} }
   /* bottom overlay group for pause/reset */
   .overlay-bottom{position:absolute;bottom:14px;left:50%;transform:translateX(-50%);display:none;gap:8px}
   .overlay-bottom .overlay-arrow{position:static;transform:none}
@@ -350,10 +350,11 @@ const ringContainer = document.getElementById('ringContainer'); if(ringContainer
   ringContainer.addEventListener('click', onTap);
   ringContainer.addEventListener('touchend', (e)=>{ onTap(e); }, {passive:true});
   // overlay arrows
-  const ovPrev = document.getElementById('overlayPrev'); const ovNext = document.getElementById('overlayNext'); const ovPause = document.getElementById('overlayPause'); const ovReset = document.getElementById('overlayReset'); if(ovPrev){ ovPrev.addEventListener('click', ()=>{ if(window.running) prev(); }); }
-  if(ovNext){ ovNext.addEventListener('click', ()=>{ if(window.running){ remaining = 0; } }); }
+  const ovPrev = document.getElementById('overlayPrev'); const ovNext = document.getElementById('overlayNext'); const ovPause = document.getElementById('overlayPause'); const ovReset = document.getElementById('overlayReset');
+  if(ovPrev){ ovPrev.addEventListener('click', ()=>{ if(window.running){ idx = Math.max(0, idx-1); remaining = seq[idx]?.dur || 0; phase = seq[idx]?.type || phase; playBeep('next'); updateDisplay(); last = performance.now(); } }); }
+  if(ovNext){ ovNext.addEventListener('click', ()=>{ if(window.running){ remaining = 0; last = performance.now(); updateDisplay(); } }); }
   if(ovPause){ ovPause.addEventListener('click', ()=>{ if(window.running) pause(); else start(); }); }
-  if(ovReset){ ovReset.addEventListener('click', ()=>{ reset(); }); }
+  if(ovReset){ ovReset.addEventListener('click', ()=>{ if(window.running){ remaining = seq[idx]?.dur || 0; last = performance.now(); updateDisplay(); } else { reset(); } }); }
 }
 
 // init
