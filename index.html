@@ -99,6 +99,12 @@
         <button id="reset" type="button" class="btn">Reiniciar</button>
       </div>
 
+      <div style="margin-top:10px;display:flex;gap:8px;align-items:center">
+      <label style="font-size:13px;color:var(--muted);display:flex;align-items:center"><input id="warnToggle" type="checkbox" checked style="margin-right:8px"> Som aviso final</label>
+      <input id="warnThreshold" type="number" value="5" min="1" style="width:60px">
+      <span style="color:var(--muted);font-size:13px">segundos</span>
+      </div>
+
       <div class="meta" id="info">Round 0 / 0 • Total: 00:00</div>
     </div>
   </div>
@@ -111,8 +117,8 @@ window.running = false;
 function load(){try{const s=localStorage.getItem(LS); if(s) store=JSON.parse(s);}catch(e){} updateUI();}
 function save(){localStorage.setItem(LS,JSON.stringify(store)); updateUI();}
 
-const els={warmup:1,rest:1,end:1,rounds:1,newName:1,newMin:1,newSec:1};
-els.warmup = document.getElementById('warmup'); els.rest = document.getElementById('rest'); els.end = document.getElementById('end'); els.rounds = document.getElementById('rounds'); els.newName = document.getElementById('newName'); els.newMin = document.getElementById('newMin'); els.newSec = document.getElementById('newSec');
+const els={warmup:1,rest:1,end:1,rounds:1,newName:1,newMin:1,newSec:1,warnToggle:1,warnThreshold:1};
+els.warmup = document.getElementById('warmup'); els.rest = document.getElementById('rest'); els.end = document.getElementById('end'); els.rounds = document.getElementById('rounds'); els.newName = document.getElementById('newName'); els.newMin = document.getElementById('newMin'); els.newSec = document.getElementById('newSec'); els.warnToggle = document.getElementById('warnToggle'); els.warnThreshold = document.getElementById('warnThreshold');
 const startBtn=document.getElementById('start'); const pauseBtn=document.getElementById('pause'); const resetBtn=document.getElementById('reset'); const prevBtn=document.getElementById('prev'); const nextBtn=document.getElementById('next'); const timeLeftEl=document.getElementById('timeLeft'); const phaseNameEl=document.getElementById('phaseName'); const infoEl=document.getElementById('info'); const progEl = document.getElementById('prog');
 
 function renderRounds(){els.rounds.innerHTML=''; store.rounds.forEach((r,i)=>{
@@ -239,19 +245,24 @@ const clearAllBtn = document.getElementById('clearAll'); if(clearAllBtn){ clearA
 
 // audio
 function playTone(freq,duration,ctx){ try{ ctx = ctx || new (window.AudioContext || window.webkitAudioContext)(); const o = ctx.createOscillator(); const g = ctx.createGain(); o.type='sine'; o.frequency.value = freq; o.connect(g); g.connect(ctx.destination); g.gain.setValueAtTime(0.0001, ctx.currentTime); g.gain.exponentialRampToValueAtTime(0.15, ctx.currentTime + 0.01); o.start(); g.gain.exponentialRampToValueAtTime(0.00001, ctx.currentTime + duration); o.stop(ctx.currentTime + duration + 0.02); }catch(e){/* ignore */} }
-function playBeep(kind){ if(kind==='start') playTone(880,0.25); else if(kind==='next') { playTone(1200,0.18); setTimeout(()=>playTone(800,0.12),120); } else playTone(640,0.18); }
+function playBeep(kind){ if(kind==='start') playTone(880,0.25); else if(kind==='next') { playTone(1200,0.18); setTimeout(()=>playTone(800,0.12),120); } else if(kind==='warn'){ playTone(1400,0.12); } else playTone(640,0.18); }
 
 // timer engine
-var seq = window.seq || []; let idx=0; let phase='idle'; let remaining=0; let raf=0; let last=0;
+var seq = window.seq || []; let idx=0; let phase='idle'; let remaining=0; let raf=0; let last=0; let lastWarnedSec = -1;
 function buildSeq(){ seq = []; // use exactly the configured blocks in order
   store.rounds.forEach((r)=>{ seq.push({type: r.name || 'Bloco', dur: r.dur || 0}); }); }
-function start(){ if(window.running) return; if(seq.length===0) buildSeq(); if(phase==='idle' || phase==='Pronto'){ idx=0; remaining = seq[0]?.dur || 0; phase = seq[0]?.type || 'Pronto'; playBeep('start'); } window.running = true; last = performance.now(); updateDisplay(); if(raf) cancelAnimationFrame(raf); raf = requestAnimationFrame(tick); }
+function start(){ if(window.running) return; if(seq.length===0) buildSeq(); if(phase==='idle' || phase==='Pronto'){ idx=0; remaining = seq[0]?.dur || 0; phase = seq[0]?.type || 'Pronto'; playBeep('start'); } window.running = true; lastWarnedSec = -1; last = performance.now(); updateDisplay(); if(raf) cancelAnimationFrame(raf); raf = requestAnimationFrame(tick); }
 function pause(){ window.running=false; if(raf) cancelAnimationFrame(raf); raf=0;}
 function reset(){ pause(); buildSeq(); idx=0; phase='idle'; remaining=0; updateDisplay();}
 function next(){ if(seq.length===0) buildSeq(); remaining=0; }
 function prev(){ if(seq.length===0) buildSeq(); idx = Math.max(0, idx-1); remaining = seq[idx]?.dur || 0; phase = seq[idx]?.type || 'idle'; playBeep('next'); updateDisplay(); }
 
-function tick(ts){ if(!window.running) return; if(typeof ts === 'undefined') ts = performance.now(); const dt = (ts - last) / 1000; last = ts; remaining -= dt; if(remaining <= 0){ idx++; if(idx >= seq.length){ window.running = false; phase = 'Pronto'; remaining = 0; updateDisplay(); playBeep('end'); return; } phase = seq[idx].type; remaining = seq[idx].dur; playBeep('next'); }
+function tick(ts){ if(!window.running) return; if(typeof ts === 'undefined') ts = performance.now(); const dt = (ts - last) / 1000; last = ts; remaining -= dt; if(remaining <= 0){ idx++; if(idx >= seq.length){ window.running = false; phase = 'Pronto'; remaining = 0; updateDisplay(); playBeep('end'); return; } phase = seq[idx].type; remaining = seq[idx].dur; lastWarnedSec = -1; playBeep('next'); } else {
+      // warning beeps in the final seconds
+      try{
+        if(els.warnToggle && els.warnToggle.checked){ const threshold = parseInt(els.warnThreshold?.value) || 5; const sec = Math.ceil(remaining); if(sec <= threshold && sec !== lastWarnedSec){ lastWarnedSec = sec; playBeep('warn'); } }
+      }catch(e){/* ignore */}
+    }
  updateDisplay(); raf = requestAnimationFrame(tick); } 
 
 function formatTime(s){ s=Math.max(0,Math.round(s)); const m=Math.floor(s/60); const ss=s%60; return `${String(m).padStart(2,'0')}:${String(ss).padStart(2,'0')}` }
