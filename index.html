@@ -18,7 +18,7 @@
   .round input{width:100px;padding:8px;border-radius:6px;border:1px solid #111;background:#050505;color:var(--fg)}
   .round .name{flex:1;font-size:15px}
   .round.dragging{opacity:0.7;transform:scale(0.99);cursor:grabbing}
-  .btn{background:transparent;border:1px solid rgba(255,255,255,0.06);color:var(--fg);padding:10px 14px;border-radius:12px;cursor:pointer}
+  .btn{background:transparent;border:1px solid rgba(255,255,255,0.06);color:var(--fg);padding:10px 14px;border-radius:12px;cursor:pointer;-webkit-tap-highlight-color:transparent;touch-action:manipulation;-webkit-user-select:none;user-select:none}
   .btn.primary{background:linear-gradient(90deg,var(--accent),#6f50d8);color:#fff;border:0}
 
   /* timer */
@@ -31,7 +31,7 @@
   .shortcut{min-width:120px;white-space:nowrap;text-align:center}
 
   /* progress ring */
-  .ring{width:220px;height:220px;display:flex;align-items:center;justify-content:center;position:relative;margin-bottom:12px}
+  .ring{width:220px;height:220px;display:flex;align-items:center;justify-content:center;position:relative;margin-bottom:12px;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
   .ring svg{transform:rotate(-90deg)}
   .ring .center{position:absolute;display:flex;flex-direction:column;align-items:center}
 
@@ -120,10 +120,6 @@
       <!-- overlay arrows for quick advance/prev while running -->
       <button id="overlayPrev" class="btn small overlay-arrow overlay-prev" title="Anterior">◀</button>
       <button id="overlayNext" class="btn small overlay-arrow overlay-next" title="Próximo">▶</button>
-      <!-- overlay bottom controls: pause/resume -->
-      <div class="overlay-bottom">
-        <button id="overlayPause" class="btn small overlay-pause" title="Pausar/Retomar">⏯</button>
-      </div>
         <svg width="220" height="220" viewBox="0 0 100 100">
           <defs>
             <linearGradient id="grad" x1="0" x2="1">
@@ -292,7 +288,9 @@ const applyAllRestBtn = document.getElementById('applyAllRest'); if(applyAllRest
 const clearAllBtn = document.getElementById('clearAll'); if(clearAllBtn){ clearAllBtn.addEventListener('click',()=>{ if(!confirm('Limpar tudo e restaurar padrão?')) return; store = {warmup:30,rest:60,end:60,rounds:[{name:'Round 1',dur:60},{name:'Round 2',dur:60}]}; save(); renderRounds(); }); }
 
 // audio
-function playTone(freq,duration,ctx){ try{ ctx = ctx || new (window.AudioContext || window.webkitAudioContext)(); const o = ctx.createOscillator(); const g = ctx.createGain(); o.type='sine'; o.frequency.value = freq; o.connect(g); g.connect(ctx.destination); g.gain.setValueAtTime(0.0001, ctx.currentTime); g.gain.exponentialRampToValueAtTime(0.15, ctx.currentTime + 0.01); o.start(); g.gain.exponentialRampToValueAtTime(0.00001, ctx.currentTime + duration); o.stop(ctx.currentTime + duration + 0.02); }catch(e){/* ignore */} }
+let _audioCtx = null;
+function ensureAudioContext(){ try{ if(!_audioCtx){ _audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } if(_audioCtx && _audioCtx.state === 'suspended'){ _audioCtx.resume().catch(()=>{}); } }catch(e){} }
+function playTone(freq,duration,ctx){ try{ ctx = ctx || _audioCtx || new (window.AudioContext || window.webkitAudioContext)(); const o = ctx.createOscillator(); const g = ctx.createGain(); o.type='sine'; o.frequency.value = freq; o.connect(g); g.connect(ctx.destination); g.gain.setValueAtTime(0.0001, ctx.currentTime); g.gain.exponentialRampToValueAtTime(0.15, ctx.currentTime + 0.01); o.start(); g.gain.exponentialRampToValueAtTime(0.00001, ctx.currentTime + duration); o.stop(ctx.currentTime + duration + 0.02); }catch(e){/* ignore */} }
 function playBeep(kind){ if(kind==='start') playTone(880,0.25); else if(kind==='next') { playTone(1200,0.18); setTimeout(()=>playTone(800,0.12),120); } else if(kind==='warn'){ playTone(1400,0.12); } else playTone(640,0.18); }
 
 // timer engine
@@ -355,8 +353,14 @@ const ringContainer = document.getElementById('ringContainer'); if(ringContainer
     // single tap -> toggle
     if(window.running) pause(); else start();
   };
-  ringContainer.addEventListener('click', onTap);
+  // use pointerup for consistent single-tap behavior on Safari/iOS
+  ringContainer.addEventListener('pointerup', (e)=>{ onTap(e); });
+  // also handle touchend fallback
   ringContainer.addEventListener('touchend', (e)=>{ onTap(e); }, {passive:true});
+  // ensure audio is available after first user gesture (important on iOS Safari)
+  function _resumeAudioOnce(){ ensureAudioContext(); ringContainer.removeEventListener('pointerup', _resumeAudioOnce); document.removeEventListener('pointerdown', _resumeAudioOnce); }
+  ringContainer.addEventListener('pointerup', _resumeAudioOnce, {passive:true});
+  document.addEventListener('pointerdown', _resumeAudioOnce, {passive:true});
   // overlay arrows and controls — stop propagation so ring click doesn't catch them
   const ovPrev = document.getElementById('overlayPrev'); const ovNext = document.getElementById('overlayNext'); const ovPause = document.getElementById('overlayPause'); const ovReset = document.getElementById('overlayReset');
   const stopEvt = (fn)=>{ return (e)=>{ e.stopPropagation(); try{ e.preventDefault(); }catch(_){ } fn(e); }; };
