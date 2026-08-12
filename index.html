@@ -50,11 +50,8 @@
       <hr style="opacity:0.06;margin:12px 0">
       <div style="display:flex;gap:8px;align-items:center">
         <input id="newName" type="text" placeholder="Nome do round (ex: Circuito)" style="flex:1;padding:8px;border-radius:8px;border:1px solid #111;background:#050505;color:var(--fg)">
-        <input id="newDur" type="number" value="60" min="1" style="width:70px">
-        <select id="newUnit" style="width:70px;padding:8px;border-radius:8px;background:#050505;border:1px solid #111;color:var(--fg)">
-          <option value="s">seg</option>
-          <option value="m">min</option>
-        </select>
+        <input id="newMin" type="number" value="1" min="0" style="width:70px" title="Minutos">
+        <input id="newSec" type="number" value="0" min="0" max="59" style="width:70px" title="Segundos">
         <button id="addRound" type="button" class="btn primary">Adicionar</button>
       </div>
       <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap;">
@@ -113,16 +110,16 @@ window.running = false;
 function load(){try{const s=localStorage.getItem(LS); if(s) store=JSON.parse(s);}catch(e){} updateUI();}
 function save(){localStorage.setItem(LS,JSON.stringify(store)); updateUI();}
 
-const els={warmup:1,rest:1,end:1,rounds:1,newName:1,newDur:1};
-els.warmup = document.getElementById('warmup'); els.rest = document.getElementById('rest'); els.end = document.getElementById('end'); els.rounds = document.getElementById('rounds'); els.newName = document.getElementById('newName'); els.newDur = document.getElementById('newDur');
+const els={warmup:1,rest:1,end:1,rounds:1,newName:1,newMin:1,newSec:1};
+els.warmup = document.getElementById('warmup'); els.rest = document.getElementById('rest'); els.end = document.getElementById('end'); els.rounds = document.getElementById('rounds'); els.newName = document.getElementById('newName'); els.newMin = document.getElementById('newMin'); els.newSec = document.getElementById('newSec');
 const startBtn=document.getElementById('start'); const pauseBtn=document.getElementById('pause'); const resetBtn=document.getElementById('reset'); const prevBtn=document.getElementById('prev'); const nextBtn=document.getElementById('next'); const timeLeftEl=document.getElementById('timeLeft'); const phaseNameEl=document.getElementById('phaseName'); const infoEl=document.getElementById('info'); const progEl = document.getElementById('prog');
 
 function renderRounds(){els.rounds.innerHTML=''; store.rounds.forEach((r,i)=>{
   const div=document.createElement('div'); div.className='round'; div.setAttribute('draggable','true'); div.dataset.index = i;
   const disabledAttr = window.running ? 'disabled' : '';
-  // determine unit and display value
-  const currentSeconds = r.dur || 0; const useMin = currentSeconds % 60 === 0 && currentSeconds !== 0; const displayVal = useMin ? (currentSeconds/60) : currentSeconds; const unitSel = useMin ? 'm' : 's';
-  div.innerHTML = `<div class="name"><input data-i="${i}" class="rname" value="${escapeHtml(r.name)}" style="background:transparent;border:0;color:var(--fg)"></div><input data-i="${i}" class="rdur" type="number" value="${displayVal}" min="1" step="1"><select data-i="${i}" class="runit" style="width:70px;padding:6px;border-radius:6px;background:#050505;border:1px solid #111;color:var(--fg)"><option value="s" ${unitSel==='s'?'selected':''}>seg</option><option value="m" ${unitSel==='m'?'selected':''}>min</option></select><div style="display:flex;gap:6px"><button data-i="${i}" class="btn small move-up" ${disabledAttr}>▲</button><button data-i="${i}" class="btn small move-down" ${disabledAttr}>▼</button><button data-i="${i}" class="btn small del" ${disabledAttr}>✖</button></div>`;
+  // determine minutes and seconds for display
+  const currentSeconds = r.dur || 0; const displayMin = Math.floor(currentSeconds/60); const displaySec = currentSeconds % 60;
+  div.innerHTML = `<div class="name"><input data-i="${i}" class="rname" value="${escapeHtml(r.name)}" style="background:transparent;border:0;color:var(--fg)"></div><input data-i="${i}" class="rmin" type="number" value="${displayMin}" min="0" style="width:60px;padding:6px;border-radius:6px;border:1px solid #111;background:#050505;color:var(--fg)" title="min"><input data-i="${i}" class="rsec" type="number" value="${displaySec}" min="0" max="59" style="width:60px;padding:6px;border-radius:6px;border:1px solid #111;background:#050505;color:var(--fg)" title="sec"><div style="display:flex;gap:6px"><button data-i="${i}" class="btn small move-up" ${disabledAttr}>▲</button><button data-i="${i}" class="btn small move-down" ${disabledAttr}>▼</button><button data-i="${i}" class="btn small del" ${disabledAttr}>✖</button></div>`;
 
   // drag handlers
   div.addEventListener('dragstart', (e)=>{
@@ -144,10 +141,9 @@ function escapeHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;
 function addRoundHandler(){
   try{
     let n = (els.newName.value || '').trim() || (`Round ${store.rounds.length+1}`);
-    const raw = parseFloat(els.newDur.value) || 0;
-    const unitEl = document.getElementById('newUnit');
-    const unit = unitEl ? unitEl.value : 's';
-    const d = Math.max(1, Math.round(raw * (unit === 'm' ? 60 : 1)));
+    const mins = parseInt(els.newMin.value) || 0;
+    const secs = parseInt(els.newSec.value) || 0;
+    const d = Math.max(1, mins*60 + Math.round(secs));
     // alias mapping for quick words
     const aliasMap = {
       'aquecimento': 'Aquecimento', 'aquec': 'Aquecimento',
@@ -169,21 +165,21 @@ function addRoundHandler(){
     save(); renderRounds();
     // clear inputs for convenience
     els.newName.value = '';
-    els.newDur.value = 60;
-    if(unitEl) unitEl.value = 's';
+    els.newMin.value = 1;
+    els.newSec.value = 0;
     console.log('addRoundHandler: added', n, d);
   }catch(e){ console.error('addRoundHandler error', e); alert('Erro ao adicionar bloco: '+e.message); }
 }
 // attach listener if element exists
 const _btnAdd = document.getElementById('addRound'); if(_btnAdd){ _btnAdd.addEventListener('click', addRoundHandler); }
 // hook shortcut buttons
-const shortcutBtns = document.querySelectorAll('.shortcut'); if(shortcutBtns && shortcutBtns.length){ shortcutBtns.forEach(b=>{ b.addEventListener('click', ()=>{ els.newName.value = b.dataset.name || ''; els.newDur.focus(); }); }); }
+const shortcutBtns = document.querySelectorAll('.shortcut'); if(shortcutBtns && shortcutBtns.length){ shortcutBtns.forEach(b=>{ b.addEventListener('click', ()=>{ els.newName.value = b.dataset.name || ''; if(els.newMin) els.newMin.focus(); }); }); }
 
 
-els.rounds.addEventListener('input', e => { const t = e.target; const i = Number(t.dataset.i); if(isNaN(i)) return; if(t.classList.contains('rname')){ store.rounds[i].name = t.value; save(); } if(t.classList.contains('rdur')){ // numeric input changed
-    const val = parseFloat(t.value) || 0; const unitSel = document.querySelector(`select.runit[data-i='${i}']`); const unit = unitSel ? unitSel.value : 's'; store.rounds[i].dur = Math.max(1, Math.round(val * (unit==='m'?60:1))); save(); }
-  if(t.classList.contains('runit')){ // unit changed
-    const valInput = document.querySelector(`input.rdur[data-i='${i}']`); const val = parseFloat(valInput.value) || 0; const unit = t.value; store.rounds[i].dur = Math.max(1, Math.round(val * (unit==='m'?60:1))); save(); }
+els.rounds.addEventListener('input', e => { const t = e.target; const i = Number(t.dataset.i); if(isNaN(i)) return; if(t.classList.contains('rname')){ store.rounds[i].name = t.value; save(); }
+  if(t.classList.contains('rmin')){ const minVal = parseInt(t.value) || 0; const secInput = document.querySelector(`input.rsec[data-i='${i}']`); const secVal = parseInt(secInput?.value) || 0; store.rounds[i].dur = Math.max(1, minVal*60 + secVal); save(); }
+  if(t.classList.contains('rsec')){ const secVal = parseInt(t.value) || 0; const minInput = document.querySelector(`input.rmin[data-i='${i}']`); const minVal = parseInt(minInput?.value) || 0; // allow sec overflow
+    store.rounds[i].dur = Math.max(1, minVal*60 + secVal); save(); }
 });
 els.rounds.addEventListener('click', e => {
   const b = e.target.closest('button'); if(!b) return; const i = Number(b.dataset.i);
