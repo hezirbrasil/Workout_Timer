@@ -67,7 +67,18 @@
   .round.dragging{opacity:0.6;transform:scale(0.995)}
   .round.drag-over-top{outline:2px dashed var(--accent);outline-offset:-6px}
   .round.drag-over-bottom{outline:2px dashed var(--accent);outline-offset:-6px}
-</style>
+
+  /* TELA INICIAL: somente Iniciar */
+  body:not(.compact) .controls #prev,
+  body:not(.compact) .controls #pause,
+  body:not(.compact) .controls #next,
+  body:not(.compact) #exitCompact,
+  body:not(.compact) #overlayPrev,
+  body:not(.compact) #overlayNext,
+  body:not(.compact) #overlayPause { display:none !important; }
+  body:not(.compact) .controls { display:flex; }
+  body:not(.compact) .controls #start { display:inline-block !important; }
+  </style>
 </head>
 <body>
   <div class="wrap">
