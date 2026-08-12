@@ -50,12 +50,13 @@
   body.compact .ring .center .phase{display:block;font-size:18px}
   .shortcut{min-width:120px;white-space:nowrap;text-align:center}
   /* overlay arrows */
-  .overlay-arrow{position:absolute;top:50%;transform:translateY(-50%);background:linear-gradient(180deg,rgba(15,15,15,0.7),rgba(10,10,10,0.6));border:0;color:#fff;font-size:28px;padding:12px 14px;border-radius:50%;backdrop-filter:blur(6px);box-shadow:0 6px 18px rgba(0,0,0,0.6);z-index:30}
+  .overlay-arrow{position:absolute;top:50%;transform:translateY(-50%);background:linear-gradient(180deg,rgba(15,15,15,0.7),rgba(10,10,10,0.6));border:0;color:#fff;font-size:28px;padding:12px 14px;border-radius:50%;backdrop-filter:blur(6px);box-shadow:0 6px 18px rgba(0,0,0,0.6);z-index:40}
   .overlay-prev{left:12px}
   .overlay-next{right:12px}
   .overlay-arrow{display:none}
   body.running .overlay-arrow{display:block}
-  @media(max-width:880px){ .overlay-arrow{font-size:22px;padding:10px} }
+  @media(max-width:880px){ .overlay-arrow{font-size:30px;padding:14px} .btn{padding:14px 18px;font-size:16px;border-radius:12px} .overlay-bottom{gap:12px} }
+
   /* bottom overlay group for pause/reset */
   .overlay-bottom{position:absolute;bottom:14px;left:50%;transform:translateX(-50%);display:none;gap:8px}
   .overlay-bottom .overlay-arrow{position:static;transform:none}
@@ -341,6 +342,8 @@ const exitCompactBtn = document.getElementById('exitCompact'); if(exitCompactBtn
 // ring tap / double-tap handlers for compact mode: single tap toggles pause/resume, double-tap exits compact
 const ringContainer = document.getElementById('ringContainer'); if(ringContainer){ let lastTap = 0; const doubleMs = 350; const handleExit = ()=>{ try{ document.body.classList.remove('compact'); document.body.classList.remove('running'); }catch(e){}; pause(); };
   const onTap = (e)=>{
+    // ignore taps that originated on controls/buttons
+    if(e && e.target && e.target.closest && e.target.closest('button')) return;
     if(!document.body.classList.contains('compact')) return;
     const now = Date.now(); if(now - lastTap <= doubleMs){ // double-tap -> exit
       lastTap = 0; handleExit(); return; }
@@ -350,13 +353,13 @@ const ringContainer = document.getElementById('ringContainer'); if(ringContainer
   };
   ringContainer.addEventListener('click', onTap);
   ringContainer.addEventListener('touchend', (e)=>{ onTap(e); }, {passive:true});
-  // overlay arrows
+  // overlay arrows and controls — stop propagation so ring click doesn't catch them
   const ovPrev = document.getElementById('overlayPrev'); const ovNext = document.getElementById('overlayNext'); const ovPause = document.getElementById('overlayPause'); const ovReset = document.getElementById('overlayReset');
-  if(ovPrev){ ovPrev.addEventListener('click', ()=>{ prev(); }); }
-  if(ovNext){ ovNext.addEventListener('click', ()=>{ next(); }); }
-  if(ovPause){ ovPause.addEventListener('click', ()=>{ if(window.running) pause(); else start(); }); }
-  if(ovReset){ ovReset.addEventListener('click', ()=>{ // if running, restart current round; otherwise full reset
-      if(window.running){ remaining = seq[idx]?.dur || 0; lastWarnedSec = -1; last = performance.now(); updateDisplay(); playBeep('start'); } else { reset(); } }); }
+  const stopEvt = (fn)=>{ return (e)=>{ e.stopPropagation(); try{ e.preventDefault(); }catch(_){ } fn(e); }; };
+  if(ovPrev){ ovPrev.addEventListener('click', stopEvt(()=>{ prev(); })); ovPrev.addEventListener('touchstart', stopEvt(()=>{}), {passive:false}); }
+  if(ovNext){ ovNext.addEventListener('click', stopEvt(()=>{ next(); })); ovNext.addEventListener('touchstart', stopEvt(()=>{}), {passive:false}); }
+  if(ovPause){ ovPause.addEventListener('click', stopEvt(()=>{ if(window.running) pause(); else start(); })); ovPause.addEventListener('touchstart', stopEvt(()=>{}), {passive:false}); }
+  if(ovReset){ ovReset.addEventListener('click', stopEvt(()=>{ if(window.running){ remaining = seq[idx]?.dur || 0; lastWarnedSec = -1; last = performance.now(); updateDisplay(); playBeep('start'); } else { reset(); } })); ovReset.addEventListener('touchstart', stopEvt(()=>{}), {passive:false}); }
 }
 
 // init
