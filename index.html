@@ -2,233 +2,62 @@
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Timer Builder — Cronômetro Simples</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Timer Builder — Cronômetro</title>
 <style>
-  :root{--bg:#000;--fg:#eee;--accent:#8a2be2;--muted:#9b9b9b}
-  *{box-sizing:border-box}
-  html,body{height:100%;margin:0;background:var(--bg);color:var(--fg);font-family:Inter,system-ui,Segoe UI,Roboto,Arial}
-  .wrap{max-width:980px;margin:20px auto;padding:18px;display:grid;grid-template-columns:320px 1fr;gap:18px}
-  .panel{background:#070707;border:1px solid rgba(138,43,226,0.12);padding:14px;border-radius:10px}
-  h1{font-size:20px;margin:0 0 10px 0;color:var(--accent)}
-  label{font-size:12px;color:var(--muted)}
-  input[type=number],input[type=text],select{width:100%;padding:8px;border-radius:8px;border:1px solid #111;background:#050505;color:var(--fg);margin-top:6px}
-  .list{margin-top:10px;max-height:520px;overflow:auto}
-  .round{display:flex;gap:12px;align-items:center;padding:14px;border-radius:10px;background:linear-gradient(90deg,rgba(138,43,226,0.04),transparent);margin-bottom:10px;font-size:15px;touch-action:none;-webkit-user-select:none;user-select:none;cursor:grab}
-  .round input{width:100px;padding:8px;border-radius:6px;border:1px solid #111;background:#050505;color:var(--fg)}
-  .round .name{flex:1;font-size:15px}
-  .round.dragging{opacity:0.7;transform:scale(0.99);cursor:grabbing}
-  .btn{background:transparent;border:1px solid rgba(255,255,255,0.06);color:var(--fg);padding:10px 14px;border-radius:12px;cursor:pointer}
-  .btn.primary{background:linear-gradient(90deg,var(--accent),#6f50d8);color:#fff;border:0}
-
-  .timer{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:30px}
-  .time{font-size:56px;font-weight:700;color:var(--fg)}
-  .phase{font-size:14px;color:var(--muted);margin-bottom:6px}
-  .controls{display:flex;gap:8px;margin-top:18px}
-  .small{font-size:15px;padding:10px 12px}
-  .meta{margin-top:12px;color:var(--muted);font-size:13px}
-  .shortcut{min-width:120px;white-space:nowrap;text-align:center}
-
-  .ring{width:220px;height:220px;display:flex;align-items:center;justify-content:center;position:relative;margin-bottom:12px}
-  .ring svg{transform:rotate(-90deg)}
-  .ring .center{position:absolute;display:flex;flex-direction:column;align-items:center}
-
-  @media(max-width:880px){.wrap{grid-template-columns:1fr;padding:12px}.timer{padding:18px}.time{font-size:44px}}
-
-  /* MODO TIMER: tela limpa, sem nenhum botão */
-  body.compact .wrap{display:block;width:100vw;max-width:none;height:100vh;margin:0;padding:0}
-  body.compact .wrap > .panel:first-child{display:none}
-  body.compact .wrap > .panel.timer{display:flex;width:100vw;height:100vh;min-height:100vh;margin:0;padding:0;border:0;border-radius:0}
-  body.compact .controls,
-  body.compact .warn-area,
-  body.compact .meta,
-  body.compact .exit-compact-btn,
-  body.compact .overlay-bottom,
-  body.compact .overlay-arrow{display:none !important}
-  body.compact .ring{width:min(90vw,90vh);height:min(90vw,90vh);margin:0}
-  body.compact .ring svg{width:100%;height:100%}
-  body.compact .ring .center .time{font-size:clamp(64px,12vw,180px)}
-  body.compact .ring .center .phase{display:block;font-size:clamp(18px,3vw,32px)}
-  body.compact{user-select:none;-webkit-user-select:none;overflow:hidden}
-
-  .overlay-arrow{position:absolute;top:50%;transform:translateY(-50%);background:linear-gradient(180deg,rgba(15,15,15,0.7),rgba(10,10,10,0.6));border:0;color:#fff;font-size:28px;padding:12px 14px;border-radius:50%;backdrop-filter:blur(6px);box-shadow:0 6px 18px rgba(0,0,0,0.6);z-index:40}
-  .overlay-prev{left:12px}
-  .overlay-next{right:12px}
-  .overlay-arrow{display:none}
-  body.running .overlay-arrow{display:block}
-  .overlay-pause{display:block}
-  #prev,#next{display:none}
-  body.running #prev,body.running #next{display:inline-block}
-  @media(max-width:880px){.overlay-arrow{font-size:30px;padding:14px}.btn{padding:14px 18px;font-size:16px;border-radius:12px}.overlay-bottom{gap:12px}}
-
-  .overlay-bottom{position:absolute;bottom:14px;left:50%;transform:translateX(-50%);display:flex;gap:8px}
-  .overlay-bottom .overlay-arrow,.overlay-bottom .overlay-pause{position:static;transform:none}
-  @media(max-width:880px){.overlay-bottom{bottom:10px}}
-  .round.dragging{opacity:0.6;transform:scale(0.995)}
-  .round.drag-over-top{outline:2px dashed var(--accent);outline-offset:-6px}
-  .round.drag-over-bottom{outline:2px dashed var(--accent);outline-offset:-6px}
-
-  /* TELA INICIAL: somente Iniciar */
-  body:not(.compact) .controls #prev,
-  body:not(.compact) .controls #pause,
-  body:not(.compact) .controls #next,
-  body:not(.compact) #exitCompact,
-  body:not(.compact) #overlayPrev,
-  body:not(.compact) #overlayNext,
-  body:not(.compact) #overlayPause { display:none !important; }
-  body:not(.compact) .controls { display:flex; }
-  body:not(.compact) .controls #start { display:inline-block !important; }
-  
-
-/* MOBILE CONFIG UI */
-@media (max-width: 600px) {
-  html, body { min-height: 100%; }
-  .wrap { display:block; width:100%; max-width:none; margin:0; padding:10px; }
-  .wrap > .panel:first-child { padding:14px; border-radius:14px; }
-  .wrap > .panel.timer { margin-top:10px; padding:14px; border-radius:14px; }
-  .panel h1 { font-size:22px; }
-  .panel:first-child > div:first-of-type { font-size:14px !important; }
-  #newName { min-height:48px; font-size:16px; padding:12px !important; }
-  #newMin, #newSec { width:82px !important; min-height:48px; font-size:18px; text-align:center; }
-  #addRound { min-height:48px; padding:12px 18px; font-size:16px; }
-  .shortcut { min-height:44px; min-width:0; flex:1 1 calc(50% - 6px); font-size:14px; }
-  .round { display:grid; grid-template-columns:1fr 68px 68px; gap:8px; padding:12px; align-items:center; }
-  .round .name { grid-column:1 / -1; }
-  .round .name input { width:100% !important; min-height:44px; font-size:16px !important; }
-  .round input.rmin, .round input.rsec { width:68px !important; min-height:44px; font-size:16px; text-align:center; }
-  .round > div:last-child { grid-column:1 / -1; display:flex; gap:8px !important; }
-  .round > div:last-child .btn { flex:1; min-height:44px; }
-  #clearAll { min-height:46px; width:100%; font-size:16px; }
-  .list { max-height:none; overflow:visible; }
-  .warn-area { flex-wrap:wrap; }
-  .warn-area input[type=number] { min-height:44px; font-size:16px; }
-  body:not(.compact) .timer { display:flex; }
-  body:not(.compact) .timer .ring { width:180px; height:180px; }
-  body:not(.compact) .timer .ring svg { width:180px; height:180px; }
-  body:not(.compact) .timer .time { font-size:42px; }
-  body:not(.compact) .timer .phase { font-size:13px; }
-  body:not(.compact) .timer .controls #start { min-height:54px; min-width:180px; font-size:18px; }
-}
-@media (max-width: 380px) {
-  .round { grid-template-columns:1fr 62px 62px; gap:6px; }
-  .round input.rmin, .round input.rsec { width:62px !important; }
-  .shortcut { font-size:13px; }
-}
-
+:root{--bg:#000;--fg:#eee;--accent:#8a2be2;--muted:#999}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;background:var(--bg);color:var(--fg);font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial}
+body{padding:18px}.wrap{max-width:980px;margin:auto;display:grid;grid-template-columns:360px 1fr;gap:18px}.panel{background:#070707;border:1px solid rgba(138,43,226,.12);padding:16px;border-radius:12px}h1{font-size:20px;margin:0 0 8px;color:var(--accent)}label,.meta{color:var(--muted);font-size:13px}
+input{font:inherit}.top{display:flex;gap:8px;align-items:end}.field{flex:1}.field input{width:100%;margin-top:5px;padding:11px;border-radius:8px;border:1px solid #222;background:#050505;color:var(--fg)}
+.time-fields{display:flex;gap:8px}.time-fields .field{min-width:70px}.btn{background:transparent;border:1px solid rgba(255,255,255,.12);color:var(--fg);padding:10px 12px;border-radius:10px;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent}.btn.primary{background:linear-gradient(90deg,var(--accent),#6f50d8);border:0;color:#fff}.btn:disabled{opacity:.3;cursor:not-allowed}
+.shortcuts{display:flex;gap:6px;flex-wrap:wrap;margin:12px 0}.short{flex:1;min-width:100px}.list{margin-top:8px}.round{display:grid;grid-template-columns:1fr 62px 62px;gap:8px;padding:12px;margin-bottom:9px;border-radius:10px;background:linear-gradient(90deg,rgba(138,43,226,.05),transparent)}.round-name{grid-column:1/-1}.round input{width:100%;padding:9px;border-radius:7px;border:1px solid #222;background:#050505;color:var(--fg)}.round-actions{grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px}.round-actions .btn{min-height:44px;font-size:16px}.move-up{border-color:rgba(138,43,226,.35)}.move-down{border-color:rgba(138,43,226,.35)}.delete{border-color:rgba(255,80,80,.3)}
+.clear{width:100%;margin-top:4px}.timer{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:500px}.ring{width:240px;height:240px;position:relative;display:flex;align-items:center;justify-content:center}.ring svg{transform:rotate(-90deg)}.center{position:absolute;text-align:center}.phase{font-size:15px;color:var(--muted);margin-bottom:5px}.time{font-size:58px;font-weight:700}.controls{margin-top:18px}.start{min-width:190px;font-size:18px}.info{margin-top:12px}.warn{margin-top:14px;display:flex;align-items:center;gap:8px}.warn input[type=number]{width:60px;padding:7px;background:#050505;border:1px solid #222;border-radius:7px;color:#fff}
+body.compact{padding:0;overflow:hidden}body.compact .wrap{display:block;width:100vw;height:100vh;max-width:none}body.compact .wrap>.panel:first-child{display:none}body.compact .timer{width:100vw;height:100vh;border:0;border-radius:0;padding:0}body.compact .controls,body.compact .warn,body.compact .info{display:none!important}body.compact .ring{width:min(88vw,88vh);height:min(88vw,88vh)}body.compact .ring svg{width:100%;height:100%}body.compact .time{font-size:clamp(64px,12vw,180px)}body.compact .phase{font-size:clamp(18px,3vw,32px)}
+@media(max-width:700px){body{padding:10px}.wrap{display:block}.timer{margin-top:10px;min-height:330px}.top{display:block}.time-fields{margin-top:8px}.round{grid-template-columns:1fr 64px 64px}.round-actions{grid-template-columns:1fr 1fr 1fr}.btn{min-height:44px}.short{min-height:44px}.time{font-size:44px}.ring{width:190px;height:190px}}
 </style>
 </head>
 <body>
-  <div class="wrap">
-    <div class="panel">
-      <h1>Timer Builder</h1>
-      <div style="margin-top:6px;color:var(--muted);font-size:13px">Configure todos os blocos manualmente abaixo.</div>
-      <hr style="opacity:0.06;margin:12px 0">
-      <div style="display:flex;gap:8px;align-items:center">
-        <div style="display:flex;flex-direction:column;gap:4px;flex:1">
-          <input id="newName" type="text" placeholder="Nome do round (ex: Circuito)" style="padding:8px;border-radius:8px;border:1px solid #111;background:#050505;color:var(--fg)">
-          <div style="display:flex;gap:8px;align-items:center">
-            <div style="display:flex;flex-direction:column;align-items:center;font-size:12px;color:var(--muted)"><span>Minutos</span><input id="newMin" type="number" value="1" min="0" style="width:70px" title="Minutos"></div>
-            <div style="display:flex;flex-direction:column;align-items:center;font-size:12px;color:var(--muted)"><span>Segundos</span><input id="newSec" type="number" value="0" min="0" max="59" style="width:70px" title="Segundos"></div>
-            <div style="margin-left:auto"><button id="addRound" type="button" class="btn primary">Adicionar</button></div>
-          </div>
-        </div>
-      </div>
-      <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap;">
-        <label style="font-size:12px;color:var(--muted);align-self:center;margin-right:6px">Atalhos:</label>
-        <button type="button" class="btn small shortcut" data-name="Aquecimento">Aquecimento</button>
-        <button type="button" class="btn small shortcut" data-name="Round">Round</button>
-        <button type="button" class="btn small shortcut" data-name="Descanso">Descanso</button>
-        <button type="button" class="btn small shortcut" data-name="Troca">Troca</button>
-        <button type="button" class="btn small shortcut" data-name="Encerramento">Encerramento</button>
-      </div>
-      <div><label style="font-weight:600;margin-bottom:6px;display:block;color:var(--muted)">Blocos adicionados</label><div class="list" id="rounds"></div></div>
-      <div style="display:flex;gap:8px;margin-top:8px"><button id="clearAll" type="button" class="btn small">Limpar</button></div>
-      <div class="meta">Dica: edite nome e duração de cada round. As alterações são salvas automaticamente.</div>
-    </div>
-
-    <div class="panel timer">
-      <div class="ring" id="ringContainer">
-        <svg width="220" height="220" viewBox="0 0 100 100">
-          <defs><linearGradient id="grad" x1="0" x2="1"><stop offset="0" stop-color="#9b59ff"/><stop offset="1" stop-color="#8a2be2"/></linearGradient></defs>
-          <circle cx="50" cy="50" r="40" stroke="rgba(255,255,255,0.06)" stroke-width="6" fill="none" />
-          <circle id="prog" cx="50" cy="50" r="40" stroke="url(#grad)" stroke-width="6" stroke-linecap="round" stroke-dasharray="0 251.2" fill="none"></circle>
-        </svg>
-        <div class="center"><div class="phase" id="phaseName">Pronto</div><div class="time" id="timeLeft">00:00</div></div>
-      </div>
-      <div class="controls"><button id="start" type="button" class="btn primary">Iniciar</button></div>
-      <div class="warn-area" style="margin-top:10px;display:flex;gap:8px;align-items:center"><label style="font-size:13px;color:var(--muted);display:flex;align-items:center"><input id="warnToggle" type="checkbox" checked style="margin-right:8px"> Som aviso final</label><input id="warnThreshold" type="number" value="5" min="1" style="width:60px"><span style="color:var(--muted);font-size:13px">segundos</span></div>
-      <div class="meta" id="info">Round 0 / 0 • Total: 00:00</div>
-    </div>
-  </div>
-
+<div class="wrap">
+<section class="panel">
+<h1>Timer Builder</h1>
+<div class="meta">Configure todos os blocos manualmente abaixo.</div><hr style="opacity:.08;margin:12px 0">
+<div class="top"><div class="field"><label>Nome do round</label><input id="newName" type="text" placeholder="Ex: Round 1"></div><button id="addRound" class="btn primary" type="button">Adicionar</button></div>
+<div class="time-fields" style="margin-top:8px"><div class="field"><label>Minutos</label><input id="newMin" type="number" min="0" value="1"></div><div class="field"><label>Segundos</label><input id="newSec" type="number" min="0" max="59" value="0"></div></div>
+<div class="shortcuts"><button class="btn short" data-name="Aquecimento" type="button">Aquecimento</button><button class="btn short" data-name="Round" type="button">Round</button><button class="btn short" data-name="Descanso" type="button">Descanso</button><button class="btn short" data-name="Troca" type="button">Troca</button><button class="btn short" data-name="Encerramento" type="button">Encerramento</button></div>
+<label>Blocos adicionados</label><div id="rounds" class="list"></div><button id="clearAll" class="btn clear" type="button">Limpar</button>
+<div class="meta" style="margin-top:10px">Use ▲ para subir, ▼ para descer e 🗑️ para excluir.</div>
+</section>
+<section class="panel timer">
+<div class="ring"><svg width="240" height="240" viewBox="0 0 100 100"><circle cx="50" cy="50" r="40" stroke="rgba(255,255,255,.06)" stroke-width="6" fill="none"/><circle id="prog" cx="50" cy="50" r="40" stroke="url(#grad)" stroke-width="6" stroke-linecap="round" stroke-dasharray="0 251.2" fill="none"/><defs><linearGradient id="grad" x1="0" x2="1"><stop offset="0" stop-color="#9b59ff"/><stop offset="1" stop-color="#8a2be2"/></linearGradient></defs></svg><div class="center"><div id="phaseName" class="phase">Pronto</div><div id="timeLeft" class="time">00:00</div></div></div>
+<div class="controls"><button id="start" class="btn primary start" type="button">Iniciar</button></div>
+<div class="warn"><label><input id="warnToggle" type="checkbox" checked> Som aviso final</label><input id="warnThreshold" type="number" min="1" value="5"><span class="meta">segundos</span></div><div id="info" class="meta info">Bloco 0 / 0 • Total: 00:00</div>
+</section></div>
 <script>
 const LS='mma.simple.timer.v1';
-let store={warmup:30,rest:60,end:60,rounds:[{name:'Round 1',dur:60},{name:'Round 2',dur:60}]};
-window.running=false;
-function load(){try{const s=localStorage.getItem(LS);if(s)store=JSON.parse(s)}catch(e){}updateUI()}
-function save(){localStorage.setItem(LS,JSON.stringify(store));updateUI()}
-const els={warmup:1,rest:1,end:1,rounds:1,newName:1,newMin:1,newSec:1,warnToggle:1,warnThreshold:1};
-els.warmup=document.getElementById('warmup');els.rest=document.getElementById('rest');els.end=document.getElementById('end');els.rounds=document.getElementById('rounds');els.newName=document.getElementById('newName');els.newMin=document.getElementById('newMin');els.newSec=document.getElementById('newSec');els.warnToggle=document.getElementById('warnToggle');els.warnThreshold=document.getElementById('warnThreshold');
-const startBtn=document.getElementById('start'),pauseBtn=document.getElementById('pause'),timeLeftEl=document.getElementById('timeLeft'),phaseNameEl=document.getElementById('phaseName'),infoEl=document.getElementById('info'),progEl=document.getElementById('prog');
-function renderRounds(){els.rounds.innerHTML='';store.rounds.forEach((r,i)=>{const div=document.createElement('div');div.className='round';div.setAttribute('draggable','true');div.dataset.index=i;const disabledAttr=window.running?'disabled':'';const currentSeconds=r.dur||0;const displayMin=Math.floor(currentSeconds/60),displaySec=currentSeconds%60;div.innerHTML=`<div class="name"><input data-i="${i}" class="rname" value="${escapeHtml(r.name)}" style="background:transparent;border:0;color:var(--fg)"></div><input data-i="${i}" class="rmin" type="number" value="${displayMin}" min="0" style="width:60px;padding:6px;border-radius:6px;border:1px solid #111;background:#050505;color:var(--fg)" title="min"><input data-i="${i}" class="rsec" type="number" value="${displaySec}" min="0" max="59" style="width:60px;padding:6px;border-radius:6px;border:1px solid #111;background:#050505;color:var(--fg)" title="sec"><div style="display:flex;gap:6px"><button data-i="${i}" class="btn small move-up" ${disabledAttr}>▲</button><button data-i="${i}" class="btn small move-down" ${disabledAttr}>▼</button><button data-i="${i}" class="btn small del" ${disabledAttr}>✖</button></div>`;
-  div.addEventListener('dragstart',e=>{e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('text/plain',i);div.classList.add('dragging')});
-  div.addEventListener('dragend',()=>{div.classList.remove('dragging');els.rounds.querySelectorAll('.round').forEach(it=>it.classList.remove('drag-over-top','drag-over-bottom'));renderRounds()});
-  div.addEventListener('dragover',e=>{e.preventDefault();const dragging=els.rounds.querySelector('.dragging');if(!dragging)return;const rect=div.getBoundingClientRect(),mid=rect.top+rect.height/2;if(e.clientY<mid){div.classList.add('drag-over-top');div.classList.remove('drag-over-bottom')}else{div.classList.add('drag-over-bottom');div.classList.remove('drag-over-top')}});
-  div.addEventListener('dragleave',()=>{div.classList.remove('drag-over-top','drag-over-bottom')});
-  div.addEventListener('drop',e=>{e.preventDefault();const from=Number(e.dataTransfer.getData('text/plain')),to=Number(div.dataset.index);if(isNaN(from)||isNaN(to))return;const rect=div.getBoundingClientRect(),mid=rect.top+rect.height/2;let insertAt=to;if(e.clientY>mid)insertAt=to+1;const item=store.rounds.splice(from,1)[0];if(from<insertAt)insertAt--;store.rounds.splice(insertAt,0,item);save();renderRounds()});
-  div.addEventListener('touchstart',e=>{if(e.touches.length!==1)return;e.preventDefault();div.classList.add('dragging');window._touchDrag={from:i,startY:e.touches[0].clientY}},{passive:false});
-  div.addEventListener('touchmove',e=>{if(!window._touchDrag)return;e.preventDefault();const t=e.touches[0],el=document.elementFromPoint(t.clientX,t.clientY);if(!el)return;const over=el.closest('.round');els.rounds.querySelectorAll('.round').forEach(it=>it.classList.remove('drag-over-top','drag-over-bottom'));if(!over||over===div)return;const rect=over.getBoundingClientRect(),mid=rect.top+rect.height/2;if(t.clientY<mid){over.classList.add('drag-over-top');over.classList.remove('drag-over-bottom')}else{over.classList.add('drag-over-bottom');over.classList.remove('drag-over-top')}},{passive:false});
-  div.addEventListener('touchend',e=>{const changed=e.changedTouches[0];if(!changed||!window._touchDrag){div.classList.remove('dragging');delete window._touchDrag;return}const from=window._touchDrag.from,el=document.elementFromPoint(changed.clientX,changed.clientY),over=el?el.closest('.round'):null;let insertAt=store.rounds.length-1;if(over){const to=Number(over.dataset.index);if(!isNaN(to)){const rect=over.getBoundingClientRect();insertAt=changed.clientY>(rect.top+rect.height/2)?to+1:to}}if(typeof from==='number'&&!isNaN(from)){const item=store.rounds.splice(from,1)[0];if(from<insertAt)insertAt--;store.rounds.splice(insertAt,0,item);save();renderRounds()}div.classList.remove('dragging');els.rounds.querySelectorAll('.round').forEach(it=>it.classList.remove('drag-over-top','drag-over-bottom'));delete window._touchDrag},{passive:false});
-  div.addEventListener('touchcancel',()=>{div.classList.remove('dragging');delete window._touchDrag;els.rounds.querySelectorAll('.round').forEach(it=>it.classList.remove('drag-over-top','drag-over-bottom'))});els.rounds.appendChild(div)})}
-function escapeHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
-function addRoundHandler(){try{let n=(els.newName.value||'').trim()||(`Round ${store.rounds.length+1}`);const mins=parseInt(els.newMin.value)||0,secs=parseInt(els.newSec.value)||0,d=Math.max(1,mins*60+Math.round(secs));const aliasMap={'aquecimento':'Aquecimento','aquec':'Aquecimento','round':'Round','rest':'Descanso','descanso':'Descanso','troca':'Troca','encerramento':'Encerramento','fim':'Encerramento'},norm=n.toLowerCase();for(const k in aliasMap){if(norm===k||norm.startsWith(k+' ')||norm.startsWith(k)){const suffix=n.slice(k.length).trim();n=aliasMap[k]+(suffix?' '+suffix:'');break}}store.rounds.push({name:n,dur:d});save();renderRounds();els.newName.value='';els.newMin.value=1;els.newSec.value=0}catch(e){console.error('addRoundHandler error',e);alert('Erro ao adicionar bloco: '+e.message)}}
-const _btnAdd=document.getElementById('addRound');if(_btnAdd)_btnAdd.addEventListener('click',addRoundHandler);
-const shortcutBtns=document.querySelectorAll('.shortcut');if(shortcutBtns.length)shortcutBtns.forEach(b=>b.addEventListener('click',()=>{els.newName.value=b.dataset.name||'';if(els.newMin)els.newMin.focus()}));
-els.rounds.addEventListener('input',e=>{const t=e.target,i=Number(t.dataset.i);if(isNaN(i))return;if(t.classList.contains('rname')){store.rounds[i].name=t.value;save()}if(t.classList.contains('rmin')){const minVal=parseInt(t.value)||0,secInput=document.querySelector(`input.rsec[data-i='${i}']`),secVal=parseInt(secInput?.value)||0;store.rounds[i].dur=Math.max(1,minVal*60+secVal);save()}if(t.classList.contains('rsec')){const secVal=parseInt(t.value)||0,minInput=document.querySelector(`input.rmin[data-i='${i}']`),minVal=parseInt(minInput?.value)||0;store.rounds[i].dur=Math.max(1,minVal*60+secVal);save()}});
-els.rounds.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;const i=Number(b.dataset.i);if(b.classList.contains('del')){if(window.running){alert('Não é possível excluir enquanto o cronômetro está rodando.');return}store.rounds.splice(i,1);save();renderRounds();return}if(b.classList.contains('move-up')){if(i>0){const t=store.rounds[i-1];store.rounds[i-1]=store.rounds[i];store.rounds[i]=t;save();renderRounds()}return}if(b.classList.contains('move-down')){if(i<store.rounds.length-1){const t=store.rounds[i+1];store.rounds[i+1]=store.rounds[i];store.rounds[i]=t;save();renderRounds()}return}});
-const clearAllBtn=document.getElementById('clearAll');if(clearAllBtn)clearAllBtn.addEventListener('click',()=>{if(!confirm('Limpar tudo e restaurar padrão?'))return;store={warmup:30,rest:60,end:60,rounds:[{name:'Round 1',dur:60},{name:'Round 2',dur:60}]};save();renderRounds()});
-function playTone(freq,duration,ctx){try{ctx=ctx||new(window.AudioContext||window.webkitAudioContext)();const o=ctx.createOscillator(),g=ctx.createGain();o.type='sine';o.frequency.value=freq;o.connect(g);g.connect(ctx.destination);g.gain.setValueAtTime(.0001,ctx.currentTime);g.gain.exponentialRampToValueAtTime(.15,ctx.currentTime+.01);o.start();g.gain.exponentialRampToValueAtTime(.00001,ctx.currentTime+duration);o.stop(ctx.currentTime+duration+.02)}catch(e){}}
-function playBeep(kind){if(kind==='start')playTone(880,.25);else if(kind==='next'){playTone(1200,.18);setTimeout(()=>playTone(800,.12),120)}else if(kind==='warn')playTone(1400,.12);else playTone(640,.18)}
-var seq=window.seq||[];let idx=0,phase='idle',remaining=0,raf=0,last=0,lastWarnedSec=-1;
-function buildSeq(){seq=[];store.rounds.forEach(r=>seq.push({type:r.name||'Bloco',dur:r.dur||0}))}
-function start(){if(window.running)return;if(seq.length===0)buildSeq();if(phase==='idle'||phase==='Pronto'){idx=0;remaining=seq[0]?.dur||0;phase=seq[0]?.type||'Pronto';playBeep('start')}window.running=true;lastWarnedSec=-1;last=performance.now();updateDisplay();try{document.body.classList.add('compact');document.body.classList.add('running')}catch(e){}if(raf)cancelAnimationFrame(raf);raf=requestAnimationFrame(tick)}
-function pause(){window.running=false;try{document.body.classList.remove('running')}catch(e){}if(raf)cancelAnimationFrame(raf);raf=0}
-function reset(){pause();buildSeq();idx=0;phase=seq[0]?.type||'idle';remaining=seq[0]?.dur||0;lastWarnedSec=-1;updateDisplay()}
-function next(){if(seq.length===0)buildSeq();idx++;if(idx>=seq.length){window.running=false;phase='Pronto';remaining=0;updateDisplay();playBeep('end');try{document.body.classList.remove('compact');document.body.classList.remove('running')}catch(e){};return}phase=seq[idx]?.type||phase;remaining=seq[idx]?.dur||0;lastWarnedSec=-1;playBeep('next');updateDisplay();last=performance.now()}
-function prev(){if(seq.length===0)buildSeq();idx=Math.max(0,idx-1);phase=seq[idx]?.type||phase;remaining=seq[idx]?.dur||0;lastWarnedSec=-1;playBeep('next');updateDisplay();last=performance.now()}
-function tick(ts){if(!window.running)return;if(typeof ts==='undefined')ts=performance.now();const dt=(ts-last)/1000;last=ts;remaining-=dt;if(remaining<=0){idx++;if(idx>=seq.length){window.running=false;phase='Pronto';remaining=0;updateDisplay();playBeep('end');try{document.body.classList.remove('compact');document.body.classList.remove('running')}catch(e){};return}phase=seq[idx].type;remaining=seq[idx].dur;lastWarnedSec=-1;playBeep('next')}else{try{if(els.warnToggle&&els.warnToggle.checked){const threshold=parseInt(els.warnThreshold?.value)||5,sec=Math.ceil(remaining);if(sec<=threshold&&sec!==lastWarnedSec){lastWarnedSec=sec;playBeep('warn')}}}catch(e){}}updateDisplay();raf=requestAnimationFrame(tick)}
-function formatTime(s){s=Math.max(0,Math.round(s));const m=Math.floor(s/60),ss=s%60;return`${String(m).padStart(2,'0')}:${String(ss).padStart(2,'0')}`}
-function updateDisplay(){try{if(phase==='idle'&&seq.length>0){phase=seq[idx]?.type||'Pronto';remaining=seq[idx]?.dur||0}if(phaseNameEl)phaseNameEl.textContent=phase||'Pronto';if(timeLeftEl)timeLeftEl.textContent=formatTime(remaining);if(infoEl)infoEl.textContent=`Bloco ${idx+1} / ${seq.length} • Total: ${formatTime(totalDuration())}`;const totalForPhase=seq[idx]&&seq[idx].dur?seq[idx].dur:1,pct=totalForPhase>0?Math.max(0,remaining)/totalForPhase:0,circumference=2*Math.PI*40,dash=(circumference*pct).toFixed(2);if(progEl&&typeof progEl.setAttribute==='function')progEl.setAttribute('stroke-dasharray',`${dash} ${circumference}`)}catch(e){console.error('updateDisplay error',e)}}
-function updateUI(){try{renderRounds();buildSeq();updateDisplay()}catch(e){console.error('updateUI error',e)}}
-function totalDuration(){buildSeq();return seq.reduce((a,b)=>a+(b.dur||0),0)}
-const prevBtn=document.getElementById('prev'),nextBtn=document.getElementById('next');if(startBtn)startBtn.addEventListener('click',start);if(pauseBtn)pauseBtn.addEventListener('click',pause);if(prevBtn)prevBtn.addEventListener('click',prev);if(nextBtn)nextBtn.addEventListener('click',next);
-const exitCompactBtn=document.getElementById('exitCompact');if(exitCompactBtn)exitCompactBtn.addEventListener('click',()=>{try{document.body.classList.remove('compact')}catch(e){};pause()});
-
-/* SAÍDA DO TIMER COM 3 TOQUES/CLICKS */
-const ringContainer=document.getElementById('ringContainer');
-if(ringContainer){
-  let tapCount=0;
-  let tapTimer=null;
-  const tripleTapWindow=700;
-  const exitTimerMode=()=>{
-    tapCount=0;
-    if(tapTimer){clearTimeout(tapTimer);tapTimer=null}
-    pause();
-    try{document.body.classList.remove('compact');document.body.classList.remove('running')}catch(e){}
-  };
-  const handleTap=(e)=>{
-    if(!document.body.classList.contains('compact'))return;
-    if(e&&e.target&&e.target.closest&&e.target.closest('button'))return;
-    tapCount++;
-    if(tapCount>=3){exitTimerMode();return}
-    if(tapTimer)clearTimeout(tapTimer);
-    tapTimer=setTimeout(()=>{tapCount=0;tapTimer=null},tripleTapWindow);
-  };
-  ringContainer.addEventListener('pointerup',handleTap);
-}
-
-load();renderRounds();buildSeq();updateDisplay();
-window.addEventListener('beforeunload',save);
-</script>
-</body>
-</html>
+let store={rounds:[{name:'Round 1',dur:60},{name:'Round 2',dur:60}]};
+let seq=[],idx=0,remaining=0,phase='Pronto',raf=0,last=0,lastWarned=-1;window.running=false;
+const $=id=>document.getElementById(id);const roundsEl=$('rounds');
+function load(){try{const s=localStorage.getItem(LS);if(s){const x=JSON.parse(s);if(Array.isArray(x.rounds))store=x}}catch(e){}updateUI()}
+function save(){localStorage.setItem(LS,JSON.stringify(store))}
+function formatTime(s){s=Math.max(0,Math.round(s));return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0')}
+function escapeHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+function buildSeq(){seq=store.rounds.map(r=>({type:r.name||'Bloco',dur:Math.max(1,Number(r.dur)||1)}))}
+function totalDuration(){return store.rounds.reduce((a,r)=>a+(Number(r.dur)||0),0)}
+function renderRounds(){roundsEl.innerHTML='';store.rounds.forEach((r,i)=>{const d=document.createElement('div');d.className='round';d.innerHTML='<div class="round-name"><input class="rname" data-i="'+i+'" value="'+escapeHtml(r.name)+'"></div><input class="rmin" data-i="'+i+'" type="number" min="0" value="'+Math.floor((r.dur||0)/60)+'"><input class="rsec" data-i="'+i+'" type="number" min="0" max="59" value="'+((r.dur||0)%60)+'"><div class="round-actions"><button class="btn move-up" data-i="'+i+'" type="button" '+(i===0?'disabled':'')+'>▲ Subir</button><button class="btn move-down" data-i="'+i+'" type="button" '+(i===store.rounds.length-1?'disabled':'')+'>▼ Descer</button><button class="btn delete" data-i="'+i+'" type="button">🗑️ Excluir</button></div>';roundsEl.appendChild(d)})}
+function updateDisplay(){const total=seq.length; $('phaseName').textContent=phase||'Pronto';$('timeLeft').textContent=formatTime(remaining);$('info').textContent='Bloco '+(total?idx+1:0)+' / '+total+' • Total: '+formatTime(totalDuration());const t=seq[idx]?.dur||1;const pct=Math.max(0,Math.min(1,remaining/t));$('prog').setAttribute('stroke-dasharray',(2*Math.PI*40*pct).toFixed(2)+' '+(2*Math.PI*40))}
+function updateUI(){buildSeq();renderRounds();if(!window.running){idx=Math.min(idx,Math.max(0,seq.length-1));phase=seq[idx]?.type||'Pronto';remaining=seq[idx]?.dur||0}updateDisplay()}
+roundsEl.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;const i=Number(b.dataset.i);if(!Number.isInteger(i)||window.running)return;if(b.classList.contains('delete')){store.rounds.splice(i,1)}else if(b.classList.contains('move-up')&&i>0){[store.rounds[i-1],store.rounds[i]]=[store.rounds[i],store.rounds[i-1]]}else if(b.classList.contains('move-down')&&i<store.rounds.length-1){[store.rounds[i],store.rounds[i+1]]=[store.rounds[i+1],store.rounds[i]]}else{return}save();buildSeq();idx=Math.min(idx,Math.max(0,seq.length-1));phase=seq[idx]?.type||'Pronto';remaining=seq[idx]?.dur||0;renderRounds();updateDisplay()});
+roundsEl.addEventListener('input',e=>{const t=e.target,i=Number(t.dataset.i);if(!Number.isInteger(i)||!store.rounds[i])return;if(t.classList.contains('rname'))store.rounds[i].name=t.value;if(t.classList.contains('rmin')||t.classList.contains('rsec')){const card=t.closest('.round');const min=Number(card.querySelector('.rmin').value)||0;const sec=Math.max(0,Math.min(59,Number(card.querySelector('.rsec').value)||0));store.rounds[i].dur=Math.max(1,min*60+sec)}save();buildSeq();updateDisplay()});
+$('addRound').addEventListener('click',()=>{const name=($('newName').value||'').trim()||'Round '+(store.rounds.length+1);const min=Number($('newMin').value)||0;const sec=Math.max(0,Math.min(59,Number($('newSec').value)||0));store.rounds.push({name,dur:Math.max(1,min*60+sec)});save();$('newName').value='';$('newMin').value=1;$('newSec').value=0;updateUI()});
+document.querySelectorAll('.short').forEach(b=>b.addEventListener('click',()=>{$('newName').value=b.dataset.name;$('newName').focus()}));
+$('clearAll').addEventListener('click',()=>{if(!confirm('Limpar tudo e restaurar os rounds padrão?'))return;store={rounds:[{name:'Round 1',dur:60},{name:'Round 2',dur:60}]};save();reset()});
+function tone(freq,duration){try{const C=window.AudioContext||window.webkitAudioContext;if(!C)return;const c=new C(),o=c.createOscillator(),g=c.createGain();o.frequency.value=freq;o.connect(g);g.connect(c.destination);g.gain.value=.12;o.start();o.stop(c.currentTime+duration)}catch(e){}}
+function beep(kind){if(kind==='next'){tone(1200,.12);setTimeout(()=>tone(800,.1),130)}else if(kind==='warn')tone(1400,.1);else if(kind==='end')tone(640,.2);else tone(880,.2)}
+function start(){if(window.running||!seq.length)return;buildSeq();idx=0;phase=seq[0].type;remaining=seq[0].dur;window.running=true;last=performance.now();lastWarned=-1;document.body.classList.add('compact');beep('start');raf=requestAnimationFrame(tick)}
+function tick(ts){if(!window.running)return;const dt=(ts-last)/1000;last=ts;remaining-=dt;if(remaining<=0){idx++;if(idx>=seq.length){window.running=false;phase='Pronto';remaining=0;document.body.classList.remove('compact');beep('end');updateDisplay();return}phase=seq[idx].type;remaining=seq[idx].dur;lastWarned=-1;beep('next')}else if($('warnToggle').checked){const threshold=Number($('warnThreshold').value)||5,sec=Math.ceil(remaining);if(sec<=threshold&&sec!==lastWarned){lastWarned=sec;beep('warn')}}updateDisplay();raf=requestAnimationFrame(tick)}
+function reset(){window.running=false;if(raf)cancelAnimationFrame(raf);document.body.classList.remove('compact');buildSeq();idx=0;phase=seq[0]?.type||'Pronto';remaining=seq[0]?.dur||0;updateUI()}
+$('start').addEventListener('click',start);
+let taps=0,tapTimer=null;document.querySelector('.ring').addEventListener('pointerup',e=>{if(!document.body.classList.contains('compact'))return;if(e.target.closest('button'))return;taps++;clearTimeout(tapTimer);if(taps>=3){taps=0;reset();return}tapTimer=setTimeout(()=>taps=0,700)});
+window.addEventListener('beforeunload',save);load();
+</script></body></html>
