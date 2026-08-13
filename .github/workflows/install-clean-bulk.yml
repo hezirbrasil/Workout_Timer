@@ -13,20 +13,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Install clean editor controls
+      - name: Install current bulk script
         run: |
           python3 - <<'PY'
           from pathlib import Path
           import re
           p=Path('index.html')
           s=p.read_text(encoding='utf-8-sig')
-          s=re.sub(r'<script[^>]+src=["\'][^"\']*bulk-duplicate[^"\']*["\'][^>]*>\s*</script>', '', s, flags=re.I)
-          s=re.sub(r'<style[^>]+id=["\'](?:bulk-duplicate|bulk-clean)[^"\']*["\'][^>]*>.*?</style>', '', s, flags=re.I|re.S)
-          s=re.sub(r'<script[^>]+id=["\'](?:bulk-duplicate|bulk-clean)[^"\']*["\'][^>]*>.*?</script>', '', s, flags=re.I|re.S)
-          s=re.sub(r'<style[^>]+id=["\']timer-nav-icons["\'][^>]*>.*?</style>', '', s, flags=re.I|re.S)
-          s=re.sub(r'<!--\s*BULK_DUPLICATE_CLEAN\s*-->.*?<!--\s*/BULK_DUPLICATE_CLEAN\s*-->', '', s, flags=re.I|re.S)
           s=re.sub(r'<script[^>]+src=["\']bulk-duplicate-clean\.js(?:\?[^"\']*)?["\'][^>]*>\s*</script>', '', s, flags=re.I)
-          s=s.replace('</body>','<script src="bulk-duplicate-clean.js?v=2"></script>\n</body>',1)
+          s=s.replace('</body>','<script src="bulk-duplicate-clean.js?v=3"></script>\n</body>',1)
           p.write_text(s,encoding='utf-8')
           PY
       - name: Commit
@@ -35,5 +30,5 @@ jobs:
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add index.html
           if git diff --cached --quiet; then exit 0; fi
-          git commit -m 'Install bulk duplication v2 [skip ci]'
+          git commit -m 'Use original duplicate handler for bulk duplication [skip ci]'
           git push
