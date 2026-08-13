@@ -1,0 +1,44 @@
+name: Install clean bulk duplication
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  install:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install clean editor controls
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          p=Path('index.html')
+          s=p.read_text(encoding='utf-8-sig')
+          # Remove old external bulk scripts.
+          s=re.sub(r'<script[^>]+src=["\'][^"\']*bulk-duplicate[^"\']*["\'][^>]*>\s*</script>', '', s, flags=re.I)
+          # Remove old bulk styles/scripts that were injected by earlier attempts.
+          s=re.sub(r'<style[^>]+id=["\'](?:bulk-duplicate|bulk-clean)[^"\']*["\'][^>]*>.*?</style>', '', s, flags=re.I|re.S)
+          s=re.sub(r'<script[^>]+id=["\'](?:bulk-duplicate|bulk-clean)[^"\']*["\'][^>]*>.*?</script>', '', s, flags=re.I|re.S)
+          # Remove duplicate timer-nav icon style blocks; keep none because base timer styles are enough.
+          s=re.sub(r'<style[^>]+id=["\']timer-nav-icons["\'][^>]*>.*?</style>', '', s, flags=re.I|re.S)
+          # Remove old marker blocks if present.
+          s=re.sub(r'<!--\s*BULK_DUPLICATE_CLEAN\s*-->.*?<!--\s*/BULK_DUPLICATE_CLEAN\s*-->', '', s, flags=re.I|re.S)
+          tag='<script src="bulk-duplicate-clean.js?v=1"></script>'
+          s=re.sub(r'<script[^>]+src=["\']bulk-duplicate-clean\.js(?:\?[^"\']*)?["\'][^>]*>\s*</script>', '', s, flags=re.I)
+          s=s.replace('</body>', tag+'\n</body>', 1)
+          p.write_text(s,encoding='utf-8')
+          PY
+      - name: Commit
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'Install clean bulk duplication controls'
+          git push
