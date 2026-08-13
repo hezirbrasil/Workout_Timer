@@ -1,0 +1,54 @@
+name: Fix timer UI
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  fix-ui:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fix index.html
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('index.html')
+          s = p.read_text(encoding='utf-8')
+
+          # Remove the accidental plain-text marker that was rendered on screen.
+          s = s.replace('</style>/* TIMER NAV ICONS */', '</style>')
+
+          # Replace the old visibility override with a runtime-safe one.
+          old = '''<style id="timer-nav-visibility-fix">\n/* TIMER_NAV_VISIBILITY_FIX_V1 */\n.timer-nav{display:none!important}\nbody.compact .timer-nav{display:none!important}\n</style>'''
+          new = '''<style id="timer-nav-visibility-fix">\n.timer-nav{display:none!important}\nbody.timer-running .timer-nav{display:flex!important}\n</style>'''
+          s = s.replace(old, new)
+
+          # Keep the navigation hidden until the timer is actually running.
+          marker = '</script>'
+          injection = '''<script>\n(function(){\n  const syncTimerNav=()=>document.body.classList.toggle('timer-running', !!window.running);\n  setInterval(syncTimerNav, 100);\n  syncTimerNav();\n})();\n</script>'''
+          if "timer-running" not in s:
+              s = s.replace(marker, marker + injection, 1)
+          else:
+              # If the CSS exists but the runtime bridge does not, add it once.
+              if 'syncTimerNav' not in s:
+                  s = s.replace(marker, marker + injection, 1)
+
+          p.write_text(s, encoding='utf-8')
+          PY
+      - name: Commit changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          if git diff --cached --quiet; then
+            echo "No changes needed"
+            exit 0
+          fi
+          git commit -m "Fix timer nav UI rendering"
+          git push
