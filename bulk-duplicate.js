@@ -11,3 +11,4 @@
   function init(){style();toolbar();decorate();const list=document.getElementById('rounds');if(!list)return;new MutationObserver(()=>{toolbar();decorate()}).observe(list,{childList:true});}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
 })();
+// v2 - force installation workflow to update index.html
