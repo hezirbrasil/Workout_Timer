@@ -1,12 +1,39 @@
 (()=>{
-  if(window.__WT_BULK_CLEAN_V5)return;window.__WT_BULK_CLEAN_V5=true;
+  if(window.__WT_BULK_CLEAN_V6)return;window.__WT_BULK_CLEAN_V6=true;
   const roundsEl=()=>document.getElementById('rounds');
   const selected=new Set();
   const blocks=()=>{const r=roundsEl();return r?[...r.querySelectorAll(':scope > .round')]:[]};
   const updateCount=()=>{const e=document.getElementById('bulk-selected-count');if(e)e.textContent=`${selected.size} selecionado${selected.size===1?'':'s'}`};
   function ensureToolbar(){const r=roundsEl();if(!r||document.getElementById('bulk-duplicate-toolbar'))return;const b=document.createElement('div');b.id='bulk-duplicate-toolbar';b.innerHTML='<button type="button" class="btn small" id="bulk-select-all">Selecionar todos</button><button type="button" class="btn small" id="bulk-clear">Limpar seleção</button><button type="button" class="btn small primary" id="bulk-duplicate-selected">Duplicar selecionados</button><span id="bulk-selected-count" style="color:var(--m);font-size:12px">0 selecionados</span>';r.parentNode.insertBefore(b,r);b.querySelector('#bulk-select-all').onclick=()=>{const a=blocks();const all=a.length&&a.every((_,i)=>selected.has(i));selected.clear();if(!all)a.forEach((_,i)=>selected.add(i));renderChecks()};b.querySelector('#bulk-clear').onclick=()=>{selected.clear();renderChecks()};b.querySelector('#bulk-duplicate-selected').onclick=duplicateSelected}
   function renderChecks(){const bs=blocks();for(const i of [...selected])if(i>=bs.length)selected.delete(i);bs.forEach((block,i)=>{const w=block.querySelector(':scope > .round-name');if(!w)return;let c=w.querySelector(':scope > .bulk-block-check');if(!c){c=document.createElement('input');c.type='checkbox';c.className='bulk-block-check';c.title='Selecionar bloco';c.addEventListener('click',e=>e.stopPropagation());c.addEventListener('change',()=>{c.checked?selected.add(i):selected.delete(i);updateCount()});w.insertBefore(c,w.firstChild)}c.checked=selected.has(i)});updateCount()}
-  function duplicateSelected(){if(!selected.size||window.running)return;const originals=blocks().filter((_,i)=>selected.has(i));if(!originals.length)return;const r=roundsEl();const clones=[];for(const source of originals){const clone=source.cloneNode(true);clone.querySelectorAll('input,select,textarea').forEach((el)=>{const src=source.querySelector('[data-clone-key="'+el.name+'"]');if(src)el.value=src.value});clone.querySelectorAll('.bulk-block-check').forEach(c=>c.remove());clones.push(clone)}selected.clear();for(const clone of clones)r.appendChild(clone);renderChecks();r.dispatchEvent(new Event('input',{bubbles:true}));r.dispatchEvent(new Event('change',{bubbles:true}));}
-  const style=document.createElement('style');style.id='bulk-clean-style-v5';style.textContent='#bulk-duplicate-toolbar{display:flex;gap:7px;align-items:center;flex-wrap:wrap;margin:8px 0 10px}.round-name{display:flex!important;align-items:center!important;gap:8px!important;grid-column:1/-1!important}.round-name .bulk-block-check{position:static!important;flex:0 0 20px!important;width:20px!important;height:20px!important;margin:0!important;accent-color:#8a2be2;cursor:pointer}.round-name .rname{flex:1 1 auto!important;min-width:0!important;width:auto!important}';document.head.appendChild(style);
+  function duplicateSelected(){
+    if(!selected.size||window.running)return;
+    const bs=blocks();
+    // Capture the actual original DOM nodes before creating any copy. Using
+    // indexes after the first insertion was the source of the inversion bug.
+    const originals=[...selected].sort((a,b)=>a-b).map(i=>bs[i]).filter(Boolean);
+    const r=roundsEl();
+    if(!r||!originals.length)return;
+    const clones=originals.map(source=>{
+      const clone=source.cloneNode(true);
+      clone.querySelectorAll('.bulk-block-check').forEach(c=>c.remove());
+      // Preserve form values from the source node.
+      const srcFields=source.querySelectorAll('input,select,textarea');
+      const dstFields=clone.querySelectorAll('input,select,textarea');
+      srcFields.forEach((src,i)=>{const dst=dstFields[i];if(!dst)return;if(src.type==='checkbox'||src.type==='radio')dst.checked=src.checked;else dst.value=src.value;});
+      return clone;
+    });
+    // Append in the same order as the originals: 1,3,5 => copy 1, copy 3, copy 5.
+    const frag=document.createDocumentFragment();
+    clones.forEach(clone=>frag.appendChild(clone));
+    r.appendChild(frag);
+    selected.clear();
+    renderChecks();
+    r.dispatchEvent(new Event('input',{bubbles:true}));
+    r.dispatchEvent(new Event('change',{bubbles:true}));
+    // Re-run any editor initialization hook exposed by the page after DOM cloning.
+    if(typeof window.render==='function')window.render();
+  }
+  const style=document.createElement('style');style.id='bulk-clean-style-v6';style.textContent='#bulk-duplicate-toolbar{display:flex;gap:7px;align-items:center;flex-wrap:wrap;margin:8px 0 10px}.round-name{display:flex!important;align-items:center!important;gap:8px!important;grid-column:1/-1!important}.round-name .bulk-block-check{position:static!important;flex:0 0 20px!important;width:20px!important;height:20px!important;margin:0!important;accent-color:#8a2be2;cursor:pointer}.round-name .rname{flex:1 1 auto!important;min-width:0!important;width:auto!important}';document.head.appendChild(style);
   ensureToolbar();renderChecks();const r=roundsEl();if(r)new MutationObserver(()=>{ensureToolbar();renderChecks()}).observe(r,{childList:true});
 })();
