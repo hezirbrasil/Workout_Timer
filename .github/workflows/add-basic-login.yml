@@ -1,0 +1,87 @@
+name: Add basic personal login
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  inject-login:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Inject login into index.html
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('index.html')
+          s = p.read_text(encoding='utf-8')
+          marker = '<!-- WORKOUT_TIMER_AUTH_V1 -->'
+          if marker in s:
+              print('Login already present')
+              raise SystemExit(0)
+
+          auth = r'''<!-- WORKOUT_TIMER_AUTH_V1 -->
+          <style id="workout-timer-auth-style">
+          #wt-auth{position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;background:#000;color:#eee;font-family:system-ui,Arial;padding:20px}
+          #wt-auth .box{width:min(360px,100%);padding:28px;border:1px solid #32104d;border-radius:18px;background:#070707;box-shadow:0 20px 60px rgba(0,0,0,.55)}
+          #wt-auth h2{margin:0 0 8px;color:#8a2be2;font-size:25px;text-align:center}
+          #wt-auth p{margin:0 0 20px;text-align:center;color:#999;font-size:13px}
+          #wt-auth input{display:block;width:100%;padding:13px 14px;margin:8px 0;background:#050505;color:#eee;border:1px solid #292929;border-radius:10px;font-size:16px;box-sizing:border-box}
+          #wt-auth button{display:block;width:100%;margin-top:12px;padding:13px;border:0;border-radius:10px;background:linear-gradient(90deg,#8a2be2,#6f50d8);color:#fff;font-weight:700;font-size:16px}
+          #wt-auth .error{min-height:18px;margin-top:10px;text-align:center;color:#ff6b81;font-size:13px}
+          body.wt-auth-locked>*:not(#wt-auth){pointer-events:none}
+          </style>
+          <div id="wt-auth" aria-label="Login">
+            <div class="box">
+              <h2>Workout Timer</h2>
+              <p>Acesso pessoal</p>
+              <input id="wt-user" type="text" autocomplete="username" placeholder="Usuário">
+              <input id="wt-pass" type="password" autocomplete="current-password" placeholder="Senha">
+              <button id="wt-login" type="button">Entrar</button>
+              <div id="wt-error" class="error"></div>
+            </div>
+          </div>
+          <script>
+          (()=>{
+            const USER='WorkoutTimer';
+            const PASS_HASH='6ce284ca6213f004c793e3490f088d4ba5f1ea5da5818089e6015fb4559df909';
+            const auth=document.getElementById('wt-auth');
+            const user=document.getElementById('wt-user');
+            const pass=document.getElementById('wt-pass');
+            const btn=document.getElementById('wt-login');
+            const err=document.getElementById('wt-error');
+            const hash=async value=>{const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(value));return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('')};
+            const unlock=()=>{auth.remove();document.body.classList.remove('wt-auth-locked')};
+            if(localStorage.getItem('wt-auth-ok')==='1') unlock();
+            else {document.body.classList.add('wt-auth-locked');setTimeout(()=>user.focus(),50)}
+            btn.addEventListener('click',async()=>{
+              if(user.value!==USER || await hash(pass.value)!==PASS_HASH){err.textContent='Usuário ou senha incorretos';return}
+              localStorage.setItem('wt-auth-ok','1');unlock();
+            });
+            pass.addEventListener('keydown',e=>{if(e.key==='Enter')btn.click()});
+          })();
+          </script>
+          '''
+          if '</body>' not in s:
+              raise SystemExit('index.html does not contain </body>')
+          s = s.replace('</body>', auth + '</body>', 1)
+          p.write_text(s, encoding='utf-8')
+          PY
+
+      - name: Commit injected login
+        run: |
+          if git diff --quiet -- index.html; then
+            echo 'No changes needed'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html
+          git commit -m 'Add personal login [skip ci]'
+          git push
