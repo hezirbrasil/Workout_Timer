@@ -1,0 +1,54 @@
+name: Remove bulk duplication
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Remove bulk duplication code
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          p = Path('index.html')
+          s = p.read_text(encoding='utf-8-sig')
+
+          # Remove any external bulk-duplication script references.
+          s = re.sub(r'<script[^>]*src=["\'][^"\']*bulk[^"\']*["\'][^>]*>\s*</script>', '', s, flags=re.I)
+
+          # Remove any inline bulk-duplication blocks from previous patches.
+          s = re.sub(r'<script[^>]*(?:id=["\'][^"\']*(?:bulk|duplicate)[^"\']*["\']|data-bulk[^>]*)[^>]*>.*?</script>', '', s, flags=re.I|re.S)
+          s = re.sub(r'<style[^>]*(?:id=["\'][^"\']*(?:bulk|duplicate)[^"\']*["\']|data-bulk[^>]*)[^>]*>.*?</style>', '', s, flags=re.I|re.S)
+          s = re.sub(r'<!--\s*(?:BULK_DUPLICATE|BULK_DUPLICATE_CLEAN).*?-->.*?<!--\s*/(?:BULK_DUPLICATE|BULK_DUPLICATE_CLEAN).*?-->', '', s, flags=re.I|re.S)
+
+          p.write_text(s, encoding='utf-8')
+          PY
+
+      - name: Bump service-worker cache
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          p=Path('service-worker.js')
+          s=p.read_text(encoding='utf-8')
+          s=re.sub(r"workout-timer-v\d+", "workout-timer-v12", s, count=1)
+          p.write_text(s, encoding='utf-8')
+          PY
+
+      - name: Commit cleanup
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html service-worker.js
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'Remove bulk duplication UI completely [skip ci]'
+          git push
