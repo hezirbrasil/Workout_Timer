@@ -1,0 +1,65 @@
+name: Fix start button visibility
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Patch index.html
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('index.html')
+          s = p.read_text(encoding='utf-8')
+
+          style_marker = '<style id="start-visibility-fix">'
+          if style_marker not in s:
+              style = '''<style id="start-visibility-fix">
+          body.timer-running #start{display:none!important}
+          </style>'''
+              s = s.replace('</head>', style + '</head>', 1)
+
+          script_marker = '<script id="start-visibility-fix-script">'
+          if script_marker not in s:
+              script = '''<script id="start-visibility-fix-script">
+          (()=>{
+            const sync=()=>{
+              const start=document.getElementById('start');
+              const nav=document.querySelector('.timer-nav');
+              const running=window.running===true;
+              document.body.classList.toggle('timer-running',running);
+              if(start) start.style.display=running?'none':'';
+              if(nav) nav.style.display=running?'flex':'';
+            };
+            sync();
+            setInterval(sync,100);
+          })();
+          </script>'''
+              s = s.replace('</body>', script + '</body>', 1)
+
+          p.write_text(s, encoding='utf-8')
+          PY
+
+      - name: Commit patch
+        shell: bash
+        run: |
+          if git diff --quiet -- index.html; then
+            echo "No changes needed"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git commit -m "Fix start button visibility [skip ci]"
+          git push
