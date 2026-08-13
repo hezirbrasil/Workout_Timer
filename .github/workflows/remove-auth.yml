@@ -1,0 +1,52 @@
+name: Remove legacy login
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  remove-auth:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Remove injected login
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          p = Path('index.html')
+          s = p.read_text(encoding='utf-8')
+          marker = '<!-- WORKOUT_TIMER_AUTH_V1 -->'
+          if marker not in s:
+              print('No legacy login found')
+              raise SystemExit(0)
+          s2 = re.sub(r'\\s*<!-- WORKOUT_TIMER_AUTH_V1 -->.*?</script>\\s*', '\\n', s, count=1, flags=re.S)
+          if s2 == s:
+              raise SystemExit('Login marker found but removal pattern did not match')
+          p.write_text(s2, encoding='utf-8')
+          PY
+      - name: Bump service worker cache
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('service-worker.js')
+          s = p.read_text(encoding='utf-8')
+          s = s.replace("workout-timer-v12", "workout-timer-v14")
+          s = s.replace("workout-timer-v13", "workout-timer-v14")
+          p.write_text(s, encoding='utf-8')
+          PY
+      - name: Commit cleanup
+        run: |
+          if git diff --quiet -- index.html service-worker.js; then
+            echo 'No cleanup needed'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+users.noreply.github.com'
+          git add index.html service-worker.js
+          git commit -m 'Remove legacy login and refresh cache [skip ci]'
+          git push
