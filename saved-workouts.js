@@ -1,8 +1,9 @@
+// Saved workouts feature v1
 (()=>{
   const KEY='workout.timer.saved.v1';
   const getSaved=()=>{try{const x=JSON.parse(localStorage.getItem(KEY)||'[]');return Array.isArray(x)?x:[]}catch(e){return[]}};
   const setSaved=x=>localStorage.setItem(KEY,JSON.stringify(x));
-  const esc=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  const esc=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\"/g,'&quot;');
   const makeUI=()=>{
     const panel=document.querySelector('.wrap > .panel:first-child');
     if(!panel || document.getElementById('savedWorkouts')) return;
