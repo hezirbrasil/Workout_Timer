@@ -1,8 +1,8 @@
 {
   "id": "/Workout_Timer/",
-  "name": "Workout Timer",
-  "short_name": "Workout Timer",
-  "description": "Timer profissional e configurável para treinos, rounds e aulas coletivas.",
+  "name": "RoundFlow",
+  "short_name": "RoundFlow",
+  "description": "Crie sua aula. Controle cada momento.",
   "lang": "pt-BR",
   "dir": "ltr",
   "start_url": "/Workout_Timer/?source=pwa",
