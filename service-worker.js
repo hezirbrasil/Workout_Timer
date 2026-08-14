@@ -1,4 +1,4 @@
-const CACHE_NAME = 'workout-timer-v15';
+const CACHE_NAME = 'workout-timer-v14';
 const APP_SHELL = ['./','./index.html','./manifest.json','./icon.svg','./saved-workouts.js'];
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(APP_SHELL)).then(() => self.skipWaiting()));
