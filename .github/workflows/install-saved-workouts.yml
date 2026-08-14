@@ -1,0 +1,55 @@
+name: Install saved workouts
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  install:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Install saved workouts script
+        shell: python
+        run: |
+          from pathlib import Path
+          p = Path('index.html')
+          s = p.read_text(encoding='utf-8')
+          tag = '<script src="saved-workouts.js?v=1"></script>'
+          if tag not in s:
+              marker = '</body>'
+              if marker not in s:
+                  raise SystemExit('index.html has no </body> marker')
+              s = s.replace(marker, tag + marker, 1)
+              p.write_text(s, encoding='utf-8')
+
+      - name: Update service worker cache
+        shell: python
+        run: |
+          from pathlib import Path
+          import re
+          p = Path('service-worker.js')
+          s = p.read_text(encoding='utf-8')
+          s = re.sub(r"CACHE_NAME\s*=\s*'workout-timer-v\d+'", "CACHE_NAME = 'workout-timer-v15'", s, count=1)
+          if "'./saved-workouts.js'" not in s:
+              s = s.replace("'./icon.svg'", "'./icon.svg','./saved-workouts.js'")
+          p.write_text(s, encoding='utf-8')
+
+      - name: Commit changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html service-worker.js
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "Add saved workouts UI [skip ci]"
+            git push
+          fi
